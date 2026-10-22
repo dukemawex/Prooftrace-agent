@@ -166,6 +166,11 @@ export default function InvestigationDesk() {
   const active = alerts.find((alert) => alert.record_id === selected);
   const trace = busy ? events : result?.trace || events;
   const queryCount = trace.filter((event) => event.type === "query").length;
+  const modelReady = Boolean(health?.model_runtime.configured);
+  const fallbackActive =
+    health?.model_runtime.preferred_provider === "openrouter" ||
+    trace.some((event) => event.provider === "openrouter");
+  const providerLabel = fallbackActive ? "OpenRouter" : "Meterless";
 
   const refresh = useCallback(async () => {
     try {
@@ -312,17 +317,22 @@ export default function InvestigationDesk() {
           <span
             className="provider-badge"
             title={
-              health?.meterless.configured
+              modelReady
                 ? "Credentials configured; live connectivity is checked during investigation"
-                : "Add METERLESS_API_KEY to connect"
+                : "Add METERLESS_API_KEY or OPENROUTER_API_KEY to connect"
             }
           >
-            <span
-              className={`status-dot ${health?.meterless.configured ? "green" : "amber"}`}
-            />
+            <span className={`status-dot ${modelReady ? "green" : "amber"}`} />
             <span>
-              Powered by <b>NVIDIA Nemotron</b> via Meterless
+              Powered by <b>NVIDIA Nemotron</b> via {providerLabel}
             </span>
+            {health?.openrouter.configured && (
+              <span className="badge-mode">
+                {fallbackActive
+                  ? "FREE FALLBACK ACTIVE"
+                  : "FREE FALLBACK READY"}
+              </span>
+            )}
           </span>
           <span
             className="provider-badge"
@@ -517,6 +527,17 @@ export default function InvestigationDesk() {
                     event.type === "stage" && event.stage === stage.key,
                 );
                 const status = transitions.at(-1)?.status;
+                const modelCalls = trace.filter(
+                  (event) =>
+                    event.type === "model_call" && event.stage === stage.key,
+                );
+                const activeRoute = modelCalls.at(-1) || transitions.at(-1);
+                const usesFallback =
+                  activeRoute?.fallback ??
+                  health?.model_runtime.preferred_provider === "openrouter";
+                const modelId =
+                  activeRoute?.model ||
+                  (usesFallback ? health?.openrouter.model : stage.model);
                 const guardBlocked =
                   stage.key === "guard" &&
                   (transitions.at(-1)?.result?.injection_detected ||
@@ -541,10 +562,55 @@ export default function InvestigationDesk() {
                     <div className="stage-content">
                       <div className="stage-head">
                         <h3>{stage.title}</h3>
-                        <span className="model-size">{stage.size}</span>
+                        <span className="model-size">
+                          {usesFallback ? "OPENROUTER · FREE" : stage.size}
+                        </span>
                       </div>
-                      <code className="model-id">{stage.model}</code>
+                      <code className="model-id">{modelId}</code>
                       <p className="stage-description">{stage.description}</p>
+                      {modelCalls.length > 0 && (
+                        <details className="query-card model-routes">
+                          <summary>
+                            <GitBranch size={13} />
+                            <span>Provider routing</span>
+                            <span className="query-count">
+                              {
+                                modelCalls.filter(
+                                  (event) => event.status === "completed",
+                                ).length
+                              }{" "}
+                              calls
+                            </span>
+                            <ChevronDown size={12} />
+                          </summary>
+                          <div className="query-body">
+                            {modelCalls
+                              .filter((event) => event.status !== "running")
+                              .map((event) => (
+                                <div key={event.id} className="model-attempt">
+                                  <div className="query-source">
+                                    <span>
+                                      {event.provider} · {event.status}
+                                    </span>
+                                    <span>
+                                      {event.fallback
+                                        ? "FREE FALLBACK"
+                                        : "PRIMARY"}
+                                    </span>
+                                  </div>
+                                  <code className="model-id">
+                                    {event.model}
+                                  </code>
+                                  {(event.failure || event.fallback_reason) && (
+                                    <p className="fallback-note">
+                                      {event.failure || event.fallback_reason}
+                                    </p>
+                                  )}
+                                </div>
+                              ))}
+                          </div>
+                        </details>
+                      )}
                       {guardBlocked && (
                         <div className="guard-block">
                           <ShieldAlert size={14} />
@@ -587,10 +653,11 @@ export default function InvestigationDesk() {
                   <ShieldCheck size={11} /> Quarantined before planning
                 </span>
               </div>
-              {!health?.meterless.configured && (
+              {!modelReady && (
                 <p className="setup-note">
-                  Connect NVIDIA Nemotron with <code>METERLESS_API_KEY</code> in
-                  the backend environment to investigate.
+                  Connect NVIDIA Nemotron with <code>METERLESS_API_KEY</code> or{" "}
+                  <code>OPENROUTER_API_KEY</code> in the backend environment to
+                  investigate.
                 </p>
               )}
               <button
@@ -600,7 +667,7 @@ export default function InvestigationDesk() {
                     ? () => controller.current?.abort()
                     : () => void investigate()
                 }
-                disabled={!active || (!busy && !health?.meterless.configured)}
+                disabled={!active || (!busy && !modelReady)}
               >
                 {busy ? (
                   <>
@@ -616,7 +683,9 @@ export default function InvestigationDesk() {
                 )}
               </button>
               <p className="run-caption">
-                3 specialized models. One traceable decision.
+                {fallbackActive
+                  ? "3 investigation stages. NVIDIA Nemotron free fallback."
+                  : "3 specialized models. One traceable decision."}
               </p>
             </div>
           </section>

@@ -21,6 +21,10 @@ def main():
         page.get_by_role("button", name="Run investigation").click()
         expect(page.get_by_text("Escalate for review", exact=True)).to_be_visible(timeout=30_000)
         expect(page.get_by_text("Injection detected. Memo quarantined.", exact=True)).to_be_visible()
+        if os.getenv("BROWSER_TEST_OPENROUTER_ONLY") == "1":
+            expect(page.get_by_text("FREE FALLBACK ACTIVE", exact=True)).to_be_visible()
+            expect(page.locator(".model-size").filter(has_text="OPENROUTER · FREE")).to_have_count(3)
+            expect(page.locator(".model-routes")).to_have_count(3)
         citation = page.get_by_role("button", name="[CITE: icij_kyc_entities.KYC-ALBA]", exact=True)
         citation.click()
         expect(page.locator(".selected-evidence")).to_contain_text("Alba Trade")
@@ -32,6 +36,8 @@ def main():
         artifact = json.loads(open(download.value.path()).read())
         assert artifact["verdict"] == "ESCALATED" and artifact["citations_verified"]
         assert artifact["guard"]["injection_detected"]
+        if os.getenv("BROWSER_TEST_OPENROUTER_ONLY") == "1":
+            assert all(event["provider"] == "openrouter" for event in artifact["model_routes"])
         page.locator(".wire-card").filter(has_text="TXN-9001").click()
         page.get_by_role("button", name="Run investigation").click()
         expect(page.get_by_text("Clear with proof", exact=True)).to_be_visible(timeout=30_000)

@@ -6,7 +6,7 @@ import pytest
 from openai.types.chat import ChatCompletionMessage, ChatCompletionMessageFunctionToolCall
 from openai.types.chat.chat_completion_message_function_tool_call import Function
 
-from backend.config import Settings
+from backend.config import MODELS, OPENROUTER_MODEL, Settings
 from backend.services.database import Database
 from scripts.seed_open_data import seed
 
@@ -14,7 +14,7 @@ from scripts.seed_open_data import seed
 @pytest.fixture
 def settings(tmp_path):
     return Settings(sqlite_path=str(tmp_path / "test.db"), database_url="", mongodb_uri="",
-                    meterless_api_key="test-key-not-a-real-credential", zetaris_api_url="", zetaris_api_key="",
+                    meterless_api_key="test-key-not-a-real-credential", openrouter_api_key="", zetaris_api_url="", zetaris_api_key="",
                     allow_local_fallback=True, api_key="")
 
 
@@ -37,10 +37,17 @@ class ScriptedNemotron:
     skip_tools = False
 
     def __init__(self, settings):
+        self.settings = settings
         self.calls = []
         self.round = 0
         self.closed = False
         self.instances.append(self)
+
+    def route_for(self, stage):
+        fallback = not self.settings.meterless_api_key
+        return {"model": OPENROUTER_MODEL if fallback else MODELS[stage],
+                "provider": "openrouter" if fallback else "meterless", "fallback": fallback,
+                "fallback_reason": "Meterless/NIM key is not configured" if fallback else None}
 
     async def close(self):
         self.closed = True

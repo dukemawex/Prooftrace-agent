@@ -40,7 +40,7 @@ class Verification(StrictModel):
 
 
 def safe_for_model(value: Any) -> Any:
-    """Never send a memo (even an apparently benign one) past the Nano boundary."""
+    """Never send a memo (even an apparently benign one) past the guard boundary."""
     if isinstance(value, dict):
         return {k: "[PAYMENT MEMO QUARANTINED; use structured invoice fields]" if k == "payment_memo" else safe_for_model(v)
                 for k, v in value.items()}

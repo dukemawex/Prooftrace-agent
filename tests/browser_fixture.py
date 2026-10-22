@@ -3,6 +3,7 @@
 Uses a temporary database and provider doubles; never loads real provider credentials.
 """
 import asyncio
+import os
 import tempfile
 
 import backend.agent
@@ -14,13 +15,20 @@ from tests.conftest import ScriptedNemotron
 
 class BrowserTestModel(ScriptedNemotron):
     async def complete(self, stage, messages, tools=None):
+        route = self.route_for(stage)
+        await self.on_route({"stage": stage, **route, "status": "running"})
         await asyncio.sleep(0.08)
-        return await super().complete(stage, messages, tools)
+        response = await super().complete(stage, messages, tools)
+        await self.on_route({"stage": stage, **route, "status": "completed", "reported_model": route["model"]})
+        return response
 
 
 directory = tempfile.TemporaryDirectory(prefix="prooftrace-browser-test-")
+openrouter_only = os.getenv("BROWSER_TEST_OPENROUTER_ONLY") == "1"
 settings = Settings(sqlite_path=f"{directory.name}/fixture.db", database_url="", mongodb_uri="",
-                    meterless_api_key="test-only", zetaris_api_url="", zetaris_api_key="", api_key="",
+                    meterless_api_key="" if openrouter_only else "test-only",
+                    openrouter_api_key="test-only" if openrouter_only else "",
+                    zetaris_api_url="", zetaris_api_key="", api_key="",
                     allow_local_fallback=True)
 seed(settings, offline=True)
 backend.agent.Nemotron = BrowserTestModel

@@ -17,6 +17,8 @@ export type Alert = {
 export type Health = {
   status: string;
   meterless: { configured: boolean };
+  openrouter: { configured: boolean; model: string };
+  model_runtime: { configured: boolean; preferred_provider: string | null };
   zetaris: {
     configured: boolean;
     fallback_enabled: boolean;
@@ -32,12 +34,16 @@ export type TraceEvent = {
   stage?: string;
   status?: string;
   model?: string;
+  provider?: string;
+  reported_model?: string;
+  fallback?: boolean;
+  failure?: string;
   tool?: string;
   executed_sql?: string;
   rows?: Row[];
   source?: string;
   duration_ms?: number;
-  fallback_reason?: string;
+  fallback_reason?: string | null;
   result?: Record<string, unknown>;
   episodes?: number;
 };

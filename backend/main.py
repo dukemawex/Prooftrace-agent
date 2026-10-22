@@ -9,7 +9,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse, StreamingResponse
 
 from backend.agent import InvestigationAgent
-from backend.config import MODELS, Settings
+from backend.config import MODELS, OPENROUTER_MODEL, Settings
 from backend.services.database import Database
 from backend.services.nemotron import ModelUnavailable
 from backend.services.zetaris import DataUnavailable
@@ -43,10 +43,13 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         except Exception:
             return JSONResponse(status_code=503, content={"status": "database_unavailable"})
         cloud_configured = bool(config.zetaris_api_url and config.zetaris_api_key)
-        ready = bool(config.meterless_api_key and counts[0]["count"] and (cloud_configured or config.allow_local_fallback))
+        ready = bool(config.models_configured and counts[0]["count"] and (cloud_configured or config.allow_local_fallback))
         return {
             "status": "ready" if ready else "setup_required", "models": dict(MODELS),
             "meterless": {"configured": bool(config.meterless_api_key), "connectivity": "not_probed"},
+            "openrouter": {"configured": bool(config.openrouter_api_key), "connectivity": "not_probed", "model": OPENROUTER_MODEL},
+            "model_runtime": {"configured": config.models_configured,
+                              "preferred_provider": "meterless" if config.meterless_api_key else "openrouter" if config.openrouter_api_key else None},
             "zetaris": {"configured": cloud_configured, "connectivity": "not_probed",
                         "fallback_enabled": config.allow_local_fallback, "fallback_database": database.backend},
             "seed": metadata, "alert_count": counts[0]["count"],
@@ -63,8 +66,8 @@ def create_app(settings: Settings | None = None) -> FastAPI:
 
     @api.post("/api/investigate/{txn_id}", dependencies=[Depends(authorize)])
     async def investigate(txn_id: str = Path(pattern=r"^[A-Za-z0-9_-]{1,80}$"), stream: bool = Query(False)):
-        if not config.meterless_api_key:
-            raise HTTPException(503, "Set METERLESS_API_KEY to run NVIDIA Nemotron investigations")
+        if not config.models_configured:
+            raise HTTPException(503, "Set METERLESS_API_KEY or OPENROUTER_API_KEY to run NVIDIA Nemotron investigations")
         if not await asyncio.to_thread(database.query, "SELECT record_id FROM aml_transactions WHERE record_id = ?", (txn_id,)):
             raise HTTPException(404, "Transaction not found")
         lock = locks.setdefault(txn_id, asyncio.Lock())

@@ -1,6 +1,6 @@
 # ProofTrace Agent
 
-An AML investigator that shows its work: **NVIDIA Nemotron via Meterless** reasons over **Zetaris** federated data, then produces a verified, cited SAR draft. Built for **GenAI.works Open Agent Hackathon 2026 · Track 02: The Agent That Can Explain Why**.
+An AML investigator that shows its work: **NVIDIA Nemotron via Meterless**, with an optional **OpenRouter free Nemotron fallback**, reasons over **Zetaris** federated data, then produces a verified, cited SAR draft. Built for **GenAI.works Open Agent Hackathon 2026 · Track 02: The Agent That Can Explain Why**.
 
 ## Run locally
 
@@ -15,7 +15,7 @@ python scripts/seed_open_data.py
 uvicorn backend.main:app --host 127.0.0.1 --port 8000
 ```
 
-Set `METERLESS_API_KEY` in `.env` to run investigations. In another terminal:
+Set `METERLESS_API_KEY` in `.env` to run investigations. Add `OPENROUTER_API_KEY` to enable the free NVIDIA fallback; an OpenRouter key alone also works. In another terminal:
 
 ```bash
 cd frontend
@@ -29,13 +29,23 @@ The UI loads seeded data without model credentials and clearly shows the setup r
 
 ## The three stages
 
-| Stage | Fixed runtime model | Responsibility |
+| Stage | Fixed primary model | Responsibility |
 | --- | --- | --- |
 | Guard & triage | `nvidia/llama-3.1-nemotron-nano-8b-v1` | Inspect untrusted memos for indirect prompt injection. |
 | Multi-hop planner | `nvidia/llama-3.3-nemotron-super-49b-v1` | Form hypotheses, call bounded SQL tools, follow and screen the ownership chain. |
 | Synthesizer & verifier | `nvidia/llama-3.1-nemotron-70b-instruct` | Generate a cited SAR draft, then run a separate semantic evidence check. |
 
-All model requests use the OpenAI-compatible **client library**, with `METERLESS_BASE_URL` defaulting to `https://api.meterless.io/v1`. To use NVIDIA NIM directly, set that URL to `https://integrate.api.nvidia.com/v1` and put the corresponding NIM key in `METERLESS_API_KEY`. Model IDs are fixed in `backend/config.py`; there is no alternative model provider or runtime mock mode. Access to these exact IDs must be enabled by your provider; a missing model fails explicitly.
+All model requests use the OpenAI-compatible **client library**, with `METERLESS_BASE_URL` defaulting to `https://api.meterless.io/v1`. To use NVIDIA NIM directly, set that URL to `https://integrate.api.nvidia.com/v1` and put the corresponding NIM key in `METERLESS_API_KEY`. Primary and fallback model IDs are fixed in `backend/config.py`. Every route is NVIDIA Nemotron; there is no runtime mock mode.
+
+### OpenRouter free fallback
+
+Set `OPENROUTER_API_KEY` in the backend environment to enable **`nvidia/nemotron-3-super-120b-a12b:free`** through `https://openrouter.ai/api/v1`. OpenRouter's [model catalog](https://openrouter.ai/nvidia/nemotron-3-super-120b-a12b:free) and public models API listed this free model with tool-calling support when checked on 2026-10-22.
+
+Meterless/NIM remains the primary route when its key is present. Connection failures, timeouts, unavailable models, authentication/credit failures, rate limits, and server errors switch that stage to the fixed free OpenRouter model for the rest of the investigation. An OpenRouter-only configuration uses it for all three stages, including the separate verification pass. Malformed requests, refused/truncated outputs, and failed evidence validation do not trigger provider switching. If the free endpoint is unavailable or rate-limited, the investigation fails explicitly without choosing a paid or non-NVIDIA model.
+
+Requests use the explicit `:free` model, zero maximum prompt/completion prices, and `require_parameters=true` to preserve tool support. Reasoning is disabled on this fallback to keep structured responses within the output budget. Guarding, memo quarantine, SQL restrictions, citation checks and verdict policy remain identical. The live UI, SSE `model_call` events and exported evidence record the provider, requested model, reported model, failures and fallback reason for every attempt. Free endpoint availability and account limits can change; the app never treats configured credentials as verified connectivity. Follow the endpoint's data-use terms when supplying data; the bundled wires and ownership chain are fictional demo fixtures.
+
+The primary model routes are shown below; the free fallback can handle any stage without changing its responsibilities.
 
 ```mermaid
 flowchart LR
@@ -90,10 +100,10 @@ When credentials are absent or the first query encounters a network/availability
 
 ## What the evidence controls enforce
 
-- Nano must return a valid typed guard result before planning starts. A deterministic signature check also catches the flagship injection if Nano misses it. All payment memos are quarantined from subsequent model requests; the original remains visible as untrusted raw data.
+- The guard model must return a valid typed result before planning starts. A deterministic signature check also catches the flagship injection if the model misses it. All payment memos are quarantined from subsequent model requests; the original remains visible as untrusted raw data.
 - Super can make at most 24 tool calls over 12 rounds and traverse only observed entity IDs. Ownership evaluation is capped at six entities, detects cycles and requires screening along the path.
 - The verdict policy requires identity corroboration on a continuous ≥50% ownership path to escalate the demo. A cleared demo also requires complete observed ownership, screening of every observed owner, the federated check, and a verified matching invoice. Missing or ambiguous evidence yields `REVIEW`.
-- Every narrative claim must contain valid `[CITE: table.record_id]` tags and exact field/value assertions. Fabricated records, wrong values and memo-based claims are rejected. Every policy path row must be cited. A separate 70B pass checks whether the prose actually follows from those facts; failed validation gets one regeneration attempt, then no verdict or memory is saved.
+- Every narrative claim must contain valid `[CITE: table.record_id]` tags and exact field/value assertions. Fabricated records, wrong values and memo-based claims are rejected. Every policy path row must be cited. A separate Nemotron verification pass checks whether the prose actually follows from those facts; failed validation gets one regeneration attempt, then no verdict or memory is saved.
 - Verified episodes live in `entity_risk_memory`. The planner receives only prior verdict metadata, then re-fetches current evidence. Memory never acts as proof. Full successful runs and an evidence SHA-256 digest are retained in `investigation_runs`.
 
 This is a hackathon demonstration, not a production screening or SAR-filing system. Name/alias lookup on a partial sanctions sample cannot establish real-world clearance; the schema models one direct owner per entity and does not implement aggregate ownership, temporal sanctions rules, or fuzzy identity resolution. The app produces recommendations and does not transmit SARs. The optional shared API key protects the backend transport; the Next.js proxy and workspace are intended for a trusted local/demo audience and do not implement user sign-in. The per-wire run lock applies to one backend process.
@@ -105,14 +115,14 @@ This is a hackathon demonstration, not a production screening or SAR-filing syst
 | `GET` | `/api/health` | Seed counts, fixed model routes, configuration state; does not pretend to probe live credentials. |
 | `GET` | `/api/alerts` | Seeded wire queue, latest verdict and recent beneficiary memory count. |
 | `POST` | `/api/investigate/{txn_id}` | A verified investigation with claims, evidence, policy and trace. |
-| `POST` | `/api/investigate/{txn_id}?stream=true` | SSE events: `query`, `stage`, `memory`, optional verification retry, then `result` or `error`. |
+| `POST` | `/api/investigate/{txn_id}?stream=true` | SSE events: `query`, `stage`, `model_call`, `memory`, optional verification retry, then `result` or `error`. |
 
 ```bash
 curl http://127.0.0.1:8000/api/health
 curl -N -X POST 'http://127.0.0.1:8000/api/investigate/TXN-9002?stream=true'
 ```
 
-When configured, send `X-ProofTrace-Key` on protected endpoints. A missing model key returns 503; missing transactions return 404; a concurrent run of the same wire returns 409. Streaming failures arrive as explicit error events after the response begins. Partial results never produce a verdict.
+When configured, send `X-ProofTrace-Key` on protected endpoints. If neither model-provider key is configured, investigations return 503; missing transactions return 404; a concurrent run of the same wire returns 409. Streaming failures arrive as explicit error events after the response begins. Partial results never produce a verdict.
 
 ## Tests and CI
 
@@ -125,7 +135,7 @@ npm run build
 
 The tests exercise the three scenarios, exact NVIDIA model routing through the real SDK, memo isolation, citation fabrication, verifier rejection, missing evidence, episodic memory, SSE, SQL input handling, Zetaris failure boundaries and streaming CSV parsing. Deterministic provider doubles live **only in `tests/`**. They validate orchestration, not the quality or availability of the live models.
 
-For optional browser checks, install `playwright` and its Chromium browser in your test environment. Run `uvicorn tests.browser_fixture:app --port 8001`, then run `BACKEND_URL=http://127.0.0.1:8001 npm run start -- -p 3001` from `frontend/` after building. From the repository root, `python tests/ui_smoke.py` exercises all three verdicts, streamed events, the injection warning, SQL expansion, citation highlighting, JSON export and mobile layout. Set `CHROMIUM_PATH` if using an existing system Chromium. This explicit test harness uses temporary data and provider doubles; the normal backend never imports it.
+For optional browser checks, install `playwright` and its Chromium browser in your test environment. Run `uvicorn tests.browser_fixture:app --port 8001`, then run `BACKEND_URL=http://127.0.0.1:8001 npm run start -- -p 3001` from `frontend/` after building. From the repository root, `python tests/ui_smoke.py` exercises all three verdicts, streamed events, the injection warning, SQL expansion, citation highlighting, JSON export and mobile layout. Set `CHROMIUM_PATH` if using an existing system Chromium. Set `BROWSER_TEST_OPENROUTER_ONLY=1` on both the fixture server and smoke script to check fallback badges and routing evidence. This explicit test harness uses temporary data and provider doubles; the normal backend never imports it.
 
 The Actions workflow `.github/workflows/ci_seed.yml` starts Postgres 16 and MongoDB 7, downloads 300 real OpenSanctions rows, seeds both stores, runs backend and service smoke tests, and builds Next.js. It intentionally fails if the live dataset cannot be downloaded. Service tests can also be run locally after seeding with `RUN_SERVICE_TESTS=1 python -m pytest tests/test_services.py -q`.
 
