@@ -1,885 +1,311 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { AnimatePresence, MotionConfig, motion } from "framer-motion";
 import {
-  Activity,
-  ArrowDown,
-  ArrowRight,
-  ArrowUpRight,
-  Braces,
-  Check,
-  CheckCheck,
-  ChevronDown,
-  CircleDot,
-  Clock3,
+  ChevronRight,
+  Cpu,
   Database,
-  Download,
   Fingerprint,
-  GitBranch,
-  Layers3,
-  Loader2,
+  FlaskConical,
   Play,
   RefreshCw,
-  Search,
   ShieldCheck,
-  ShieldAlert,
-  Square,
-  Terminal,
-  Waypoints,
+  TriangleAlert,
   X,
 } from "lucide-react";
-import type {
-  Alert,
-  Health,
-  Investigation,
-  Row,
-  TraceEvent,
-} from "@/lib/types";
-
-const stages = [
-  {
-    key: "guard",
-    number: "01",
-    title: "Guard & triage",
-    size: "NANO · 8B",
-    icon: ShieldCheck,
-    model: "nvidia/llama-3.1-nemotron-nano-8b-v1",
-    description: "Inspect the memo. Quarantine untrusted instructions.",
-  },
-  {
-    key: "planner",
-    number: "02",
-    title: "Follow the evidence",
-    size: "SUPER · 49B",
-    icon: GitBranch,
-    model: "nvidia/llama-3.3-nemotron-super-49b-v1",
-    description: "Trace ownership across silos. Test the sanctions hypothesis.",
-  },
-  {
-    key: "synthesizer",
-    number: "03",
-    title: "Explain. Then verify.",
-    size: "NEMOTRON · 70B",
-    icon: Fingerprint,
-    model: "nvidia/llama-3.1-nemotron-70b-instruct",
-    description:
-      "Build a cited narrative. Check every claim against its source.",
-  },
-];
-const money = (cents: number) =>
-  new Intl.NumberFormat("en-US", {
-    style: "currency",
-    currency: "USD",
-    maximumFractionDigits: 0,
-  }).format(cents / 100);
-
-async function readJSON(response: Response) {
-  const data = await response.json();
-  if (!response.ok) throw new Error(data.detail || "The request failed.");
-  return data;
-}
-
-function CitationText({
-  text,
-  select,
-}: {
-  text: string;
-  select: (id: string) => void;
-}) {
-  return (
-    <>
-      {text
-        .split(/(\[CITE: [A-Za-z_][\w]*\.[A-Za-z0-9_-]+\])/g)
-        .map((part, i) => {
-          const match = part.match(/^\[CITE: (.+)\]$/);
-          return match ? (
-            <button
-              className="citation"
-              key={i}
-              onClick={() => select(match[1])}
-              title="Inspect the supporting database row"
-            >
-              {part}
-            </button>
-          ) : (
-            <span key={i}>{part}</span>
-          );
-        })}
-    </>
-  );
-}
-
-function QueryCard({ event }: { event: TraceEvent }) {
-  return (
-    <details className="query-card">
-      <summary>
-        <span className="query-icon">
-          <Terminal size={13} />
-        </span>
-        <span>{event.tool?.replaceAll("_", " ")}</span>
-        <span className="query-count">{event.rows?.length ?? 0} rows</span>
-        <ChevronDown size={12} />
-      </summary>
-      <div className="query-body">
-        <div className="query-source">
-          <span>{event.source}</span>
-          <span>{event.duration_ms} ms</span>
-        </div>
-        {event.fallback_reason && (
-          <p className="fallback-note">{event.fallback_reason}</p>
-        )}
-        <pre className="sql">{event.executed_sql}</pre>
-        <p className="micro-label">RETURNED ROWS · UNTRUSTED SOURCE DATA</p>
-        <pre className="raw-json">{JSON.stringify(event.rows, null, 2)}</pre>
-      </div>
-    </details>
-  );
-}
-
-function RawRow({ row }: { row: Row }) {
-  return (
-    <dl className="raw-row">
-      {Object.entries(row).map(([field, value]) => (
-        <div key={field}>
-          <dt>{field}</dt>
-          <dd>{value === null ? <em>null</em> : String(value)}</dd>
-        </div>
-      ))}
-    </dl>
-  );
-}
+import { useInvestigation } from "@/hooks/use-investigation";
+import { EvidenceDossier } from "./evidence-dossier";
+import { ExecutionPipeline } from "./execution-pipeline";
+import { money, StatusDot } from "./console-ui";
+import { WireQueue } from "./wire-queue";
 
 export default function InvestigationDesk() {
-  const [alerts, setAlerts] = useState<Alert[]>([]);
-  const [health, setHealth] = useState<Health | null>(null);
-  const [selected, setSelected] = useState("TXN-9002");
-  const [results, setResults] = useState<Record<string, Investigation>>({});
-  const [events, setEvents] = useState<TraceEvent[]>([]);
-  const [busy, setBusy] = useState(false);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState("");
-  const [activeCitation, setActiveCitation] = useState("");
-  const [elapsed, setElapsed] = useState(0);
-  const controller = useRef<AbortController | null>(null);
-  const evidenceRef = useRef<HTMLDivElement>(null);
-  const result = results[selected];
-  const active = alerts.find((alert) => alert.record_id === selected);
-  const trace = busy ? events : result?.trace || events;
-  const queryCount = trace.filter((event) => event.type === "query").length;
-  const modelReady = Boolean(health?.model_runtime.configured);
-  const fallbackActive =
-    health?.model_runtime.preferred_provider === "openrouter" ||
-    trace.some((event) => event.provider === "openrouter");
-  const providerLabel = fallbackActive ? "OpenRouter" : "Meterless";
-
-  const refresh = useCallback(async () => {
-    try {
-      const [queue, status] = await Promise.all([
-        fetch("/api/alerts", { cache: "no-store" }).then(readJSON),
-        fetch("/api/health", { cache: "no-store" }).then(readJSON),
-      ]);
-      setAlerts(queue.alerts);
-      setHealth(status);
-    } catch (err) {
-      setError(
-        err instanceof Error ? err.message : "Could not load the workspace.",
-      );
-    } finally {
-      setLoading(false);
-    }
-  }, []);
-
-  useEffect(() => {
-    void refresh();
-    const poll = setInterval(() => void refresh(), 30_000);
-    return () => {
-      clearInterval(poll);
-      controller.current?.abort();
-    };
-  }, [refresh]);
-  useEffect(() => {
-    if (!busy) return;
-    const timer = setInterval(() => setElapsed((time) => time + 1), 1000);
-    return () => clearInterval(timer);
-  }, [busy]);
-
-  function choose(id: string) {
-    if (!busy) {
-      setSelected(id);
-      setEvents([]);
-      setActiveCitation("");
-      setError("");
-    }
-  }
-  function selectCitation(id: string) {
-    setActiveCitation(id);
-    requestAnimationFrame(() =>
-      evidenceRef.current?.scrollIntoView({
-        behavior: "smooth",
-        block: "nearest",
-      }),
-    );
-  }
-  function exportEvidence() {
-    if (!result) return;
-    const url = URL.createObjectURL(
-      new Blob([JSON.stringify(result, null, 2)], { type: "application/json" }),
-    );
-    const link = document.createElement("a");
-    link.href = url;
-    link.download = `prooftrace-${selected}-${result.run_id}.json`;
-    link.click();
-    setTimeout(() => URL.revokeObjectURL(url), 1000);
-  }
-
-  async function investigate() {
-    if (!active || busy) return;
-    const txnId = selected;
-    const abort = new AbortController();
-    controller.current = abort;
-    setBusy(true);
-    setEvents([]);
-    setError("");
-    setActiveCitation("");
-    setElapsed(0);
-    setResults((previous) => {
-      const next = { ...previous };
-      delete next[txnId];
-      return next;
-    });
-    let finished = false;
-    try {
-      const response = await fetch(
-        `/api/investigate/${encodeURIComponent(txnId)}?stream=true`,
-        { method: "POST", signal: abort.signal },
-      );
-      if (!response.ok) await readJSON(response);
-      if (!response.body)
-        throw new Error("The server did not return an investigation stream.");
-      const reader = response.body.getReader();
-      const decoder = new TextDecoder();
-      let pending = "";
-      while (true) {
-        const { done, value } = await reader.read();
-        if (done) break;
-        pending += decoder.decode(value, { stream: true });
-        const packets = pending.split("\n\n");
-        pending = packets.pop() || "";
-        for (const packet of packets) {
-          const data = packet
-            .split("\n")
-            .filter((line) => line.startsWith("data: "))
-            .map((line) => line.slice(6))
-            .join("\n");
-          if (!data) continue;
-          const event = JSON.parse(data);
-          if (event.type === "error") throw new Error(event.message);
-          if (event.type === "result") {
-            setResults((previous) => ({ ...previous, [txnId]: event.result }));
-            finished = true;
-          } else setEvents((previous) => [...previous, event]);
-        }
-      }
-      if (!finished)
-        throw new Error(
-          "The stream ended before a verified verdict was returned. Run the investigation again.",
-        );
-      await refresh();
-    } catch (err) {
-      setError(
-        abort.signal.aborted
-          ? "Investigation stopped. No unverified verdict is displayed."
-          : err instanceof Error
-            ? err.message
-            : "Investigation failed.",
-      );
-    } finally {
-      setBusy(false);
-      controller.current = null;
-    }
-  }
+  const desk = useInvestigation();
+  const demo = desk.mode === "demo";
+  const connected = Boolean(desk.health);
+  const complete = Object.keys(desk.results).length;
+  const volume = desk.alerts.reduce(
+    (total, alert) => total + alert.amount_cents,
+    0,
+  );
+  const source = demo
+    ? "Fictional replay fixtures"
+    : desk.health?.zetaris.configured
+      ? "Zetaris configured"
+      : desk.health?.zetaris.fallback_enabled
+        ? `${desk.health.zetaris.fallback_database.toUpperCase()} fallback enabled`
+        : "Data connection unavailable";
+  const runKey = `${desk.mode}-${desk.selected}-${desk.busy ? "running" : (desk.result?.run_id ?? "idle")}`;
 
   return (
-    <div className="app-shell">
-      <header className="topbar">
-        <a href="/" className="brand" aria-label="ProofTrace home">
-          <span className="brand-mark">
-            <Waypoints size={25} strokeWidth={1.7} />
-          </span>
-          <span>
-            proof<span className="brand-light">trace</span>
-            <span className="brand-dot">.</span>
-          </span>
+    <MotionConfig reducedMotion="user">
+      <div className="console-background min-h-screen">
+        <a
+          className="sr-only z-50 rounded bg-cyan-300 p-3 text-sm text-slate-950 focus:not-sr-only focus:fixed focus:left-4 focus:top-4"
+          href="#investigation-console"
+        >
+          Skip to investigation console
         </a>
-        <span className="header-divider" />
-        <span className="workspace-label">INVESTIGATION WORKSPACE</span>
-        <div className="provider-badges">
-          <span
-            className="provider-badge"
-            title={
-              modelReady
-                ? "Credentials configured; live connectivity is checked during investigation"
-                : "Add METERLESS_API_KEY or OPENROUTER_API_KEY to connect"
-            }
-          >
-            <span className={`status-dot ${modelReady ? "green" : "amber"}`} />
-            <span>
-              Powered by <b>NVIDIA Nemotron</b> via {providerLabel}
-            </span>
-            {health?.openrouter.configured && (
-              <span className="badge-mode">
-                {fallbackActive
-                  ? "FREE FALLBACK ACTIVE"
-                  : "FREE FALLBACK READY"}
+        <header className="border-b border-slate-800/80 bg-[#090d14]/85 backdrop-blur-xl">
+          <div className="mx-auto flex min-h-[76px] max-w-[1760px] flex-wrap items-center gap-x-7 gap-y-4 px-4 py-4 sm:px-6 2xl:px-8">
+            <div className="flex items-center gap-2.5">
+              <span className="relative flex h-9 w-9 items-center justify-center rounded-xl border border-cyan-700/50 bg-gradient-to-br from-cyan-400/10 to-cyan-950/20 shadow-[0_0_20px_-12px_#22d3ee]">
+                <Fingerprint
+                  size={22}
+                  strokeWidth={1.5}
+                  className="text-cyan-300"
+                />
               </span>
-            )}
-          </span>
-          <span
-            className="provider-badge"
-            title={
-              health?.zetaris.configured
-                ? "Cloud credentials configured"
-                : "Using the local federated fallback"
-            }
-          >
-            <Database size={12} />
-            <span>
-              Data Federated by <b>Zetaris</b>
-            </span>
-            <span className="badge-mode">
-              {health?.zetaris.configured ? "CONFIGURED" : "LOCAL"}
-            </span>
-          </span>
-        </div>
-      </header>
-
-      <main>
-        <section className="workspace-heading">
-          <div>
-            <div className="eyebrow">
-              <span className="tiny-line" /> THE AGENT THAT CAN EXPLAIN WHY
-            </div>
-            <h1>
-              Every verdict has a <span>paper trail.</span>
-            </h1>
-            <p>Follow the models. Inspect the queries. Verify the evidence.</p>
-          </div>
-          <div className="hackathon-stamp">
-            <span>GENAI.WORKS · 2026</span>
-            <strong>
-              Open Agent Hackathon <ArrowUpRight size={13} />
-            </strong>
-            <span>
-              TRACK 02 <span className="stamp-dot">/</span> GLASS-BOX
-              INTELLIGENCE
-            </span>
-          </div>
-        </section>
-
-        <div className="workspace-status">
-          <span>
-            <span className={`status-dot ${busy ? "green pulse" : "muted"}`} />
-            {busy ? "Investigation in progress" : "Workspace ready"}
-          </span>
-          <span className="status-separator">/</span>
-          <span>
-            {health?.seed.live_rows_stored ?? "—"} live OpenSanctions records
-          </span>
-          <span className="status-separator">/</span>
-          <span className="demo-label">FICTIONAL DEMO ALERTS</span>
-          <span className="status-right">
-            <Clock3 size={12} />{" "}
-            {busy ? `${elapsed}s elapsed` : "Evidence before inference"}
-          </span>
-        </div>
-        {error && (
-          <div role="alert" className="error-banner">
-            <ShieldAlert size={17} />
-            <span>{error}</span>
-            <button onClick={() => setError("")} aria-label="Dismiss error">
-              <X size={16} />
-            </button>
-          </div>
-        )}
-
-        <div className="investigation-grid">
-          <section className="panel queue-panel" aria-labelledby="queue-title">
-            <div className="panel-heading">
-              <div>
-                <span className="panel-number">01</span>
-                <h2 id="queue-title">Flagged wires</h2>
-              </div>
-              <span className="count-badge">
-                {alerts.length.toString().padStart(2, "0")}
+              <span className="text-[19px] font-semibold tracking-[-0.045em] text-slate-100">
+                Proof<span className="text-cyan-300">Trace</span>
+              </span>
+              <span className="ml-1 hidden rounded border border-slate-700/80 px-1.5 py-0.5 font-mono text-[8px] tracking-widest text-slate-500 sm:inline">
+                CONSOLE
               </span>
             </div>
-            <div className="queue-subheading">
-              <span>
-                <span className="status-dot amber" /> REVIEW QUEUE
-              </span>
-              <button
-                onClick={() => void refresh()}
-                disabled={busy}
-                aria-label="Refresh alerts"
-              >
-                <RefreshCw size={13} />
-              </button>
-            </div>
-            <div className="queue-list">
-              {loading && (
-                <div className="loading-state">
-                  <Loader2 className="spin" size={18} /> Loading flagged wires…
-                </div>
-              )}
-              {!loading && !alerts.length && (
-                <div className="empty-queue">
-                  <Database size={24} />
-                  <p>No wires loaded.</p>
-                  <small>Run the data seeder to open the demo workspace.</small>
-                </div>
-              )}
-              {alerts.map((alert, i) => (
-                <button
-                  key={alert.record_id}
-                  className={`wire-card ${selected === alert.record_id ? "selected" : ""}`}
-                  onClick={() => choose(alert.record_id)}
-                  disabled={busy}
-                  aria-pressed={selected === alert.record_id}
-                >
-                  <div className="wire-top">
-                    <span>{alert.record_id}</span>
-                    <span
-                      className={`risk-chip ${i === 0 ? "neutral" : i === 2 ? "purple" : "orange"}`}
-                    >
-                      {i === 0
-                        ? "THRESHOLD"
-                        : i === 2
-                          ? "ADVERSARIAL"
-                          : "OWNERSHIP"}
-                    </span>
-                  </div>
-                  <div className="wire-amount">
-                    {money(alert.amount_cents)}
-                    <span>{alert.currency}</span>
-                  </div>
-                  <h3>{alert.beneficiary_name}</h3>
-                  <div className="wire-route">
-                    {alert.sender_country} <ArrowRight size={11} />{" "}
-                    {alert.beneficiary_country}
-                    <span className="wire-verdict">
-                      {results[alert.record_id]?.verdict ||
-                        alert.last_verdict ||
-                        "Awaiting review"}
-                    </span>
-                  </div>
-                  {selected === alert.record_id && (
-                    <div className="selected-marker" />
-                  )}
-                </button>
-              ))}
-            </div>
-            <div className="memory-card">
-              <div>
-                <Layers3 size={16} />
-                <strong>Episodic memory</strong>
-                <span className="memory-count">
-                  {active?.memory_episodes ?? 0}
-                </span>
-              </div>
-              <p>
-                {active?.memory_episodes
-                  ? `${active.memory_episodes} prior episodes for this beneficiary. Evidence is always checked again.`
-                  : "A clean slate for this beneficiary. Verified investigations become future context."}
-              </p>
-              <span className="micro-label">CONTEXT, NEVER A SHORTCUT</span>
-            </div>
-            <div className="queue-footer">
-              <ShieldCheck size={14} />
-              <p>
-                Three fictional scenarios.
-                <br />
-                Real evidence mechanics.
-              </p>
-            </div>
-          </section>
-
-          <section className="panel trace-panel" aria-labelledby="trace-title">
-            <div className="panel-heading">
-              <div>
-                <span className="panel-number">02</span>
-                <h2 id="trace-title">Inside the investigation</h2>
-              </div>
-              <Activity size={17} className={busy ? "lime" : "dim"} />
-            </div>
-            <div className="trace-summary">
-              <span className="micro-label">NEMOTRON MODEL ROUTER</span>
-              <span>
-                {queryCount.toString().padStart(2, "0")} queries{" "}
-                <span className="dim">·</span>{" "}
-                {result ? Object.keys(result.evidence).length : "—"} evidence
-                rows
-              </span>
-            </div>
-            <div className="stage-list">
-              {stages.map((stage) => {
-                const transitions = trace.filter(
-                  (event) =>
-                    event.type === "stage" && event.stage === stage.key,
-                );
-                const status = transitions.at(-1)?.status;
-                const modelCalls = trace.filter(
-                  (event) =>
-                    event.type === "model_call" && event.stage === stage.key,
-                );
-                const activeRoute = modelCalls.at(-1) || transitions.at(-1);
-                const usesFallback =
-                  activeRoute?.fallback ??
-                  health?.model_runtime.preferred_provider === "openrouter";
-                const modelId =
-                  activeRoute?.model ||
-                  (usesFallback ? health?.openrouter.model : stage.model);
-                const guardBlocked =
-                  stage.key === "guard" &&
-                  (transitions.at(-1)?.result?.injection_detected ||
-                    result?.guard.injection_detected);
-                return (
-                  <div
-                    className={`stage ${status || "waiting"}`}
-                    key={stage.key}
-                  >
-                    <div className="stage-rail">
-                      <span className="stage-icon">
-                        {status === "completed" ? (
-                          <Check size={16} />
-                        ) : status === "running" && busy ? (
-                          <Loader2 className="spin" size={17} />
-                        ) : (
-                          <stage.icon size={16} />
-                        )}
-                      </span>
-                      <span className="rail-line" />
-                    </div>
-                    <div className="stage-content">
-                      <div className="stage-head">
-                        <h3>{stage.title}</h3>
-                        <span className="model-size">
-                          {usesFallback ? "OPENROUTER · FREE" : stage.size}
-                        </span>
-                      </div>
-                      <code className="model-id">{modelId}</code>
-                      <p className="stage-description">{stage.description}</p>
-                      {modelCalls.length > 0 && (
-                        <details className="query-card model-routes">
-                          <summary>
-                            <GitBranch size={13} />
-                            <span>Provider routing</span>
-                            <span className="query-count">
-                              {
-                                modelCalls.filter(
-                                  (event) => event.status === "completed",
-                                ).length
-                              }{" "}
-                              calls
-                            </span>
-                            <ChevronDown size={12} />
-                          </summary>
-                          <div className="query-body">
-                            {modelCalls
-                              .filter((event) => event.status !== "running")
-                              .map((event) => (
-                                <div key={event.id} className="model-attempt">
-                                  <div className="query-source">
-                                    <span>
-                                      {event.provider} · {event.status}
-                                    </span>
-                                    <span>
-                                      {event.fallback
-                                        ? "FREE FALLBACK"
-                                        : "PRIMARY"}
-                                    </span>
-                                  </div>
-                                  <code className="model-id">
-                                    {event.model}
-                                  </code>
-                                  {(event.failure || event.fallback_reason) && (
-                                    <p className="fallback-note">
-                                      {event.failure || event.fallback_reason}
-                                    </p>
-                                  )}
-                                </div>
-                              ))}
-                          </div>
-                        </details>
-                      )}
-                      {guardBlocked && (
-                        <div className="guard-block">
-                          <ShieldAlert size={14} />
-                          <span>Injection detected. Memo quarantined.</span>
-                        </div>
-                      )}
-                      {trace
-                        .filter(
-                          (event) =>
-                            event.type === "query" && event.stage === stage.key,
-                        )
-                        .map((event) => (
-                          <QueryCard key={event.id} event={event} />
-                        ))}
-                      {stage.key === "synthesizer" &&
-                        status === "completed" && (
-                          <div className="verification-pass">
-                            <CheckCheck size={14} /> Source fields matched.
-                            Narrative verified.
-                          </div>
-                        )}
-                      {status === "running" && busy && (
-                        <div className="stage-working">
-                          <span className="status-dot green pulse" /> Nemotron
-                          is working <span className="working-dots">···</span>
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-            <div className="trace-bottom">
-              <div className="memo-preview">
-                <span className="micro-label">UNTRUSTED PAYMENT MEMO</span>
-                <p>
-                  {active?.payment_memo || "Select a wire to inspect its memo."}
-                </p>
-                <span>
-                  <ShieldCheck size={11} /> Quarantined before planning
-                </span>
-              </div>
-              {!modelReady && (
-                <p className="setup-note">
-                  Connect NVIDIA Nemotron with <code>METERLESS_API_KEY</code> or{" "}
-                  <code>OPENROUTER_API_KEY</code> in the backend environment to
-                  investigate.
-                </p>
-              )}
-              <button
-                className={`run-button ${busy ? "cancel-button" : ""}`}
-                onClick={
-                  busy
-                    ? () => controller.current?.abort()
-                    : () => void investigate()
+            <div className="hidden h-5 w-px bg-slate-800 2xl:block" />
+            <div className="order-3 flex w-full flex-wrap gap-2 xl:order-none xl:w-auto">
+              <span
+                className="flex items-center gap-2 rounded-md border border-slate-800 bg-[#0d141f] px-2.5 py-1.5 text-[9px] text-slate-400"
+                title={
+                  desk.health?.meterless.configured
+                    ? "Meterless configured; connectivity is checked during a run"
+                    : "Primary provider; API credentials required for a live run"
                 }
-                disabled={!active || (!busy && !modelReady)}
               >
-                {busy ? (
-                  <>
-                    <Square size={13} /> Stop investigation{" "}
-                    <span>{elapsed}s</span>
-                  </>
-                ) : (
-                  <>
-                    <Play size={14} fill="currentColor" />{" "}
-                    {result ? "Investigate again" : "Run investigation"}
-                    <ArrowRight size={17} />
-                  </>
-                )}
-              </button>
-              <p className="run-caption">
-                {fallbackActive
-                  ? "3 investigation stages. NVIDIA Nemotron free fallback."
-                  : "3 specialized models. One traceable decision."}
-              </p>
-            </div>
-          </section>
-
-          <section
-            className="panel verdict-panel"
-            aria-labelledby="verdict-title"
-          >
-            <div className="panel-heading">
-              <div>
-                <span className="panel-number">03</span>
-                <h2 id="verdict-title">Explain why</h2>
-              </div>
-              <button
-                className="icon-button"
-                onClick={exportEvidence}
-                disabled={!result}
-                aria-label="Export investigation evidence"
+                <Cpu size={12} className="shrink-0 text-cyan-400" />
+                Powered by{" "}
+                <span className="text-slate-200">NVIDIA Nemotron</span> via
+                Meterless
+              </span>
+              <span
+                className="flex items-center gap-2 rounded-md border border-slate-800 bg-[#0d141f] px-2.5 py-1.5 text-[9px] text-slate-400"
+                title={source}
               >
-                <Download size={16} />
-              </button>
-            </div>
-            {!result ? (
-              <div className="verdict-empty">
-                <div className={`evidence-orbit ${busy ? "is-running" : ""}`}>
-                  <span className="orbit-node node-one" />
-                  <span className="orbit-node node-two" />
-                  <span className="orbit-node node-three" />
-                  <Fingerprint size={38} strokeWidth={1.1} />
-                </div>
-                <span className="micro-label">PROOF BEFORE A VERDICT</span>
-                <h3>
-                  {busy
-                    ? "The trail is taking shape."
-                    : "An answer is only as good\nas its evidence."}
-                </h3>
-                <p>
-                  {busy
-                    ? "Follow the live model trace. A recommendation appears only after citation and evidence verification."
-                    : "Run an investigation to see a cited recommendation and inspect the records behind every claim."}
-                </p>
-                <div className="evidence-checklist">
-                  <span>
-                    <CircleDot size={13} /> Every claim linked to a source
-                  </span>
-                  <span>
-                    <Braces size={13} /> Every database row inspectable
-                  </span>
-                  <span>
-                    <ShieldCheck size={13} /> Every narrative checked twice
-                  </span>
-                </div>
-              </div>
-            ) : (
-              <div className="verdict-content">
-                <div
-                  className={`verdict-banner ${result.verdict.toLowerCase()}`}
-                >
-                  <span>
-                    {result.verdict === "CLEARED" ? (
-                      <ShieldCheck size={23} />
-                    ) : (
-                      <ShieldAlert size={23} />
-                    )}
-                  </span>
-                  <div>
-                    <span className="micro-label">
-                      VERIFIED DEMO RECOMMENDATION
-                    </span>
-                    <h3>
-                      {result.verdict === "CLEARED"
-                        ? "Clear with proof"
-                        : result.verdict === "ESCALATED"
-                          ? "Escalate for review"
-                          : "Further review required"}
-                    </h3>
-                  </div>
-                </div>
-                <div className="verdict-meta">
-                  <span>
-                    <CheckCheck size={12} /> Citations verified
-                  </span>
-                  <span>{result.data_source}</span>
-                </div>
-                <div className="narrative-label">
-                  <span className="micro-label">
-                    FORENSIC NARRATIVE · SAR DRAFT
-                  </span>
-                  <span>{result.claims.length} claims</span>
-                </div>
-                <div className="claims">
-                  {result.claims.map((claim, index) => (
-                    <div className="claim" key={index}>
-                      <span className="claim-number">
-                        {String(index + 1).padStart(2, "0")}
-                      </span>
-                      <p>
-                        <CitationText
-                          text={claim.text}
-                          select={selectCitation}
-                        />
-                      </p>
-                    </div>
-                  ))}
-                </div>
-                {result.policy.chain.length > 1 && (
-                  <div className="ownership-chain">
-                    <span className="micro-label">OBSERVED OWNERSHIP PATH</span>
-                    {result.policy.chain.map((id, i) => {
-                      const row = result.evidence[`icij_kyc_entities.${id}`];
-                      return (
-                        <div key={id}>
-                          {i > 0 && (
-                            <span className="chain-arrow">
-                              <ArrowDown size={12} /> owner
-                            </span>
-                          )}
-                          <button
-                            onClick={() =>
-                              selectCitation(`icij_kyc_entities.${id}`)
-                            }
-                          >
-                            <GitBranch size={12} />
-                            <span>{String(row?.entity_name || id)}</span>
-                            {row?.ownership_percent != null && (
-                              <small>{String(row.ownership_percent)}%</small>
-                            )}
-                          </button>
-                        </div>
-                      );
-                    })}
-                  </div>
-                )}
-                <div className="evidence-inspector" ref={evidenceRef}>
-                  <div className="inspector-title">
-                    <Search size={14} />
-                    <strong>Source evidence</strong>
-                    <span>{Object.keys(result.evidence).length} rows</span>
-                  </div>
-                  <label className="sr-only" htmlFor="evidence-row">
-                    Select a source row
-                  </label>
-                  <select
-                    id="evidence-row"
-                    value={activeCitation}
-                    onChange={(event) => setActiveCitation(event.target.value)}
-                  >
-                    <option value="">Select a citation to inspect</option>
-                    {Object.keys(result.evidence).map((id) => (
-                      <option key={id} value={id}>
-                        {id}
-                      </option>
-                    ))}
-                  </select>
-                  {activeCitation && result.evidence[activeCitation] ? (
-                    <div className="selected-evidence" key={activeCitation}>
-                      <div className="evidence-table-label">
-                        <Database size={11} /> {activeCitation}
-                      </div>
-                      <RawRow row={result.evidence[activeCitation]} />
-                    </div>
-                  ) : (
-                    <p className="inspector-empty">
-                      Click any <span>[CITE: …]</span> pill to highlight the
-                      original row here.
-                    </p>
-                  )}
-                </div>
-                <p className="scope-note">{result.scope}</p>
-              </div>
-            )}
-            <div className="verdict-footer">
-              <Fingerprint size={13} />
-              <span>
-                {result
-                  ? `EVIDENCE SHA-256 · ${result.evidence_digest.slice(0, 16)}…`
-                  : "NO UNSUPPORTED CONCLUSIONS"}
+                <Database size={11} className="shrink-0 text-violet-400" />
+                Data Federated by{" "}
+                <span className="text-slate-200">Zetaris</span>
               </span>
             </div>
-          </section>
-        </div>
-        <footer className="page-footer">
-          <span>
-            PROOFTRACE <span className="dim">/</span> FOLLOW THE EVIDENCE
-          </span>
-          <span>
-            IBM AML typologies <span>·</span> ICIJ-style ownership{" "}
-            <span>·</span> Live OpenSanctions sample
-          </span>
-          <span className="footer-note">
-            Synthetic scenarios. No real-world clearance.
-          </span>
-        </footer>
-      </main>
-    </div>
+            <div className="ml-auto flex items-center gap-3">
+              <span className="hidden items-center gap-1.5 font-mono text-[9px] text-slate-500 2xl:flex">
+                <StatusDot active={connected} />
+                {desk.loading
+                  ? "CONNECTING"
+                  : connected
+                    ? "API CONNECTED"
+                    : "API OFFLINE"}
+              </span>
+              <button
+                className="button-quiet !border-cyan-800/50 !bg-cyan-950/25 !text-cyan-200 hover:!bg-cyan-950/60"
+                disabled={desk.busy && !demo}
+                onClick={() => void desk.run(true)}
+              >
+                <Play size={12} fill="currentColor" />
+                <span className="hidden sm:inline">
+                  {demo && desk.busy
+                    ? "Restart demo replay"
+                    : "1-Click Demo Replay"}
+                </span>
+                <span className="sm:hidden">Demo Replay</span>
+              </button>
+            </div>
+          </div>
+        </header>
+        <main
+          id="investigation-console"
+          className="mx-auto max-w-[1760px] px-4 pb-6 pt-7 sm:px-6 2xl:px-8"
+        >
+          <div className="mb-6 flex flex-wrap items-end justify-between gap-5">
+            <div>
+              <div className="mb-3 flex items-center gap-2 font-mono text-[9px] tracking-wider text-slate-500">
+                <ShieldCheck size={11} />
+                <span>INTELLIGENCE WORKSPACE</span>
+                <ChevronRight size={10} />
+                <span className="text-slate-400">AML OPERATIONS</span>
+              </div>
+              <h1 className="text-[28px] font-medium leading-none tracking-[-0.055em] text-slate-100 sm:text-[32px]">
+                Forensic console<span className="text-cyan-300">.</span>
+              </h1>
+              <p className="mt-3 text-[11px] text-slate-500 sm:text-xs">
+                Follow the money. Inspect the reasoning. Verify the proof.
+              </p>
+            </div>
+            <div className="flex items-center gap-5 sm:gap-7">
+              <div>
+                <p className="eyebrow">Flagged wires</p>
+                <p className="mt-2 font-mono text-xl font-light text-slate-200">
+                  {desk.loading
+                    ? "—"
+                    : String(desk.alerts.length).padStart(2, "0")}
+                  <span className="ml-2 text-[9px] text-amber-400">
+                    IN QUEUE
+                  </span>
+                </p>
+              </div>
+              <div className="h-9 w-px bg-slate-800" />
+              <div>
+                <p className="eyebrow">Review volume</p>
+                <p className="mt-2 font-mono text-xl font-light tracking-tight text-slate-200">
+                  {desk.loading ? "—" : money(volume)}
+                </p>
+              </div>
+              <div className="hidden h-9 w-px bg-slate-800 sm:block" />
+              <div className="hidden sm:block">
+                <p className="eyebrow">
+                  {demo ? "Replays complete" : "Session verdicts"}
+                </p>
+                <p className="mt-2 font-mono text-xl font-light text-cyan-300">
+                  {String(complete).padStart(2, "0")}
+                </p>
+              </div>
+            </div>
+          </div>
+          <AnimatePresence>
+            {demo && (
+              <motion.div
+                initial={{ opacity: 0, height: 0 }}
+                animate={{ opacity: 1, height: "auto" }}
+                exit={{ opacity: 0, height: 0 }}
+                className="overflow-hidden"
+              >
+                <div className="mb-5 flex flex-wrap items-center gap-x-3 gap-y-2 rounded-xl border border-violet-800/40 bg-violet-950/20 px-4 py-3">
+                  <FlaskConical
+                    size={15}
+                    className="shrink-0 text-violet-300"
+                  />
+                  <span className="font-mono text-[10px] font-medium tracking-wider text-violet-300">
+                    SIMULATED DEMO
+                  </span>
+                  <span className="text-[10px] text-slate-400">
+                    Fictional fixtures · No model calls · Live memory unchanged
+                  </span>
+                  <button
+                    className="ml-auto flex min-h-7 items-center gap-1.5 rounded px-2 text-[10px] text-violet-200 hover:bg-violet-400/10"
+                    onClick={desk.exitDemo}
+                  >
+                    Exit replay
+                    <X size={12} />
+                  </button>
+                </div>
+              </motion.div>
+            )}
+          </AnimatePresence>
+          {!demo && desk.connectionError && (
+            <div
+              role="alert"
+              className="mb-5 flex flex-wrap items-center gap-3 rounded-xl border border-amber-900/50 bg-amber-950/20 p-3 text-xs text-amber-200"
+            >
+              <TriangleAlert size={15} className="shrink-0" />
+              <span className="min-w-0 flex-1">{desk.connectionError}</span>
+              <button
+                className="button-quiet !text-amber-200"
+                onClick={() => void desk.refresh()}
+              >
+                <RefreshCw size={12} />
+                Retry connection
+              </button>
+            </div>
+          )}
+          {desk.error && (
+            <div
+              role="alert"
+              className="mb-5 flex items-start gap-2.5 rounded-xl border border-amber-900/50 bg-amber-950/20 p-3 text-xs leading-relaxed text-amber-200"
+            >
+              <TriangleAlert size={15} className="mt-0.5 shrink-0" />
+              {desk.error}
+            </div>
+          )}
+          <div className="mb-3 flex flex-wrap items-center justify-between gap-2 px-1">
+            <div className="flex items-center gap-2 font-mono text-[9px] text-slate-500">
+              <span className="h-1 w-1 rounded-full bg-slate-500" />
+              <span>ACTIVE CASE</span>
+              <span className="text-slate-300">
+                {desk.active?.record_id ?? "—"}
+              </span>
+              <span className="mx-1 text-slate-700">/</span>
+              <span>{demo ? "REPLAY SESSION" : "GLASS-BOX INVESTIGATION"}</span>
+            </div>
+            <span className="flex items-center gap-1.5 font-mono text-[8px] text-slate-500">
+              <Database size={10} />
+              {source}
+            </span>
+          </div>
+          <nav
+            aria-label="Console sections"
+            className="mb-4 grid grid-cols-3 gap-2 xl:hidden"
+          >
+            <a className="button-quiet" href="#wire-queue">
+              Wire queue
+            </a>
+            <a className="button-quiet" href="#execution-trace">
+              Execution trace
+            </a>
+            <a className="button-quiet" href="#evidence-dossier">
+              Evidence dossier
+            </a>
+          </nav>
+          <div
+            className={`grid items-stretch gap-4 md:grid-cols-[minmax(230px,.75fr)_minmax(0,1.25fr)] xl:min-h-[800px] xl:grid-cols-[minmax(0,.85fr)_minmax(0,1.4fr)_minmax(0,1.1fr)] ${demo ? "xl:h-[calc(100svh-365px)]" : "xl:h-[calc(100svh-290px)]"}`}
+          >
+            <WireQueue
+              alerts={desk.alerts}
+              active={desk.active}
+              selected={desk.selected}
+              choose={desk.choose}
+              busy={desk.busy}
+              loading={desk.loading}
+              health={desk.health}
+              results={desk.results}
+              demo={demo}
+              offline={!connected}
+            />
+            <ExecutionPipeline
+              key={runKey}
+              active={desk.active}
+              trace={desk.trace}
+              busy={desk.busy}
+              loading={desk.loading}
+              result={desk.result}
+              health={desk.health}
+              demo={demo}
+              elapsed={desk.elapsed}
+              run={() => void desk.run(demo)}
+              cancel={desk.cancel}
+            />
+            <div className="min-h-0 min-w-0 md:col-span-2 xl:col-span-1 [&>section]:h-full">
+              <EvidenceDossier
+                key={runKey}
+                result={desk.result}
+                trace={desk.trace}
+                busy={desk.busy}
+                loading={desk.loading}
+                demo={demo}
+              />
+            </div>
+          </div>
+          <footer className="mt-5 flex flex-wrap items-center justify-between gap-x-5 gap-y-2 px-1 text-[9px] text-slate-600">
+            <p className="flex items-center gap-1.5">
+              <ShieldCheck size={11} />
+              <span>
+                ProofTrace Agent<span className="mx-2 text-slate-700">/</span>
+                GenAI.works Open Agent Hackathon 2026
+              </span>
+            </p>
+            <p className="font-mono text-[8px] tracking-wider">
+              TRACK 02<span className="mx-2 text-slate-700">/</span>THE AGENT
+              THAT CAN EXPLAIN WHY
+            </p>
+          </footer>
+          <div className="sr-only" role="status" aria-live="polite">
+            {desk.busy
+              ? `${demo ? "Simulated replay" : "Investigation"} running for ${desk.selected}.`
+              : desk.result
+                ? `${demo ? "Simulated replay" : "Investigation"} complete. Verdict: ${desk.result.verdict}.`
+                : "Ready to investigate."}
+          </div>
+        </main>
+      </div>
+    </MotionConfig>
   );
 }

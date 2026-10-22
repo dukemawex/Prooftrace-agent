@@ -1,8 +1,10 @@
 import type { Metadata } from "next";
+import "@fontsource-variable/inter";
+import "@fontsource-variable/jetbrains-mono";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "ProofTrace · Every verdict has a paper trail",
+  title: "ProofTrace · Forensic Console",
   description:
     "A glass-box AML investigator powered by NVIDIA Nemotron and Zetaris. Follow every tool call and verify every claim.",
 };

@@ -2,6 +2,8 @@
 
 An AML investigator that shows its work: **NVIDIA Nemotron via Meterless**, with an optional **OpenRouter free Nemotron fallback**, reasons over **Zetaris** federated data, then produces a verified, cited SAR draft. Built for **GenAI.works Open Agent Hackathon 2026 · Track 02: The Agent That Can Explain Why**.
 
+![ProofTrace forensic console showing an explicitly simulated fictional investigation](docs/forensic-console.png)
+
 ## Run locally
 
 Requires Python 3.11+ and Node.js 22+. SQLite is included with Python; Postgres and MongoDB are optional for local development.
@@ -25,7 +27,15 @@ npm run dev
 
 Open **http://localhost:3000**. Select a wire, run the investigation, expand a tool call to inspect its SQL and returned rows, and click a `[CITE: table.record_id]` pill to highlight its source row. Export the full audit record as JSON. The API documentation is at **http://127.0.0.1:8000/docs**.
 
-The UI loads seeded data without model credentials and clearly shows the setup requirement. It never substitutes prerecorded model output. `frontend/.env.local` can be copied from `frontend/.env.example` when changing `BACKEND_URL` or using the optional backend shared key. The root `.env` is loaded by Python, not by Next.js.
+The live workspace loads seeded data without model credentials and shows the provider setup requirement. Live investigations always call NVIDIA Nemotron; unavailable providers produce an explicit error. `frontend/.env.local` can be copied from `frontend/.env.example` when changing `BACKEND_URL` or using the optional backend shared key. The root `.env` is loaded by Python, not by Next.js.
+
+## Forensic console and video replay
+
+The responsive three-column console uses obsidian glass panels, crimson/amber/cyan risk states, locally bundled Inter and JetBrains Mono fonts, Lucide icons, and Framer Motion with reduced-motion support. The queue includes sender/receiver details and episodic memory. Expand pipeline stages to see actual model routes, routing failures, exact SQL, and returned rows. The dossier links each citation to its raw record, supports keyboard tab navigation, and exposes a dedicated injection shield and JSON evidence export. Live requests use skeleton loading states, cancellation, retryable errors, and streamed stage updates.
+
+Click **1-Click Demo Replay** in the navigation to animate the selected flagship case in about seven seconds. It also works with the API offline and no model keys. Select another wire and click **Replay selected wire** to show its scenario; **Exit replay** restores the live workspace. Runs can be cancelled or restarted.
+
+Replay is always labelled **SIMULATED DEMO**, uses fictional case data, makes no investigation/model/database requests, and never writes episodic memory. Exported replay JSON includes explicit `simulation` metadata and a `SIMULATED` filename. Its static SQL snapshots are produced from the offline fixture database, and citation field/value assertions are validated during generation. This is a recording aid, not a live inference benchmark or real-world sanctions finding. Rebuild fixtures after changing the demo data with `python -m tests.generate_replay`; this development utility uses test doubles and performs no model calls.
 
 ## The three stages
 
@@ -35,7 +45,7 @@ The UI loads seeded data without model credentials and clearly shows the setup r
 | Multi-hop planner | `nvidia/llama-3.3-nemotron-super-49b-v1` | Form hypotheses, call bounded SQL tools, follow and screen the ownership chain. |
 | Synthesizer & verifier | `nvidia/llama-3.1-nemotron-70b-instruct` | Generate a cited SAR draft, then run a separate semantic evidence check. |
 
-All model requests use the OpenAI-compatible **client library**, with `METERLESS_BASE_URL` defaulting to `https://api.meterless.io/v1`. To use NVIDIA NIM directly, set that URL to `https://integrate.api.nvidia.com/v1` and put the corresponding NIM key in `METERLESS_API_KEY`. Primary and fallback model IDs are fixed in `backend/config.py`. Every route is NVIDIA Nemotron; there is no runtime mock mode.
+All model requests use the OpenAI-compatible **client library**, with `METERLESS_BASE_URL` defaulting to `https://api.meterless.io/v1`. To use NVIDIA NIM directly, set that URL to `https://integrate.api.nvidia.com/v1` and put the corresponding NIM key in `METERLESS_API_KEY`. Primary and fallback model IDs are fixed in `backend/config.py`. Every backend model route is NVIDIA Nemotron. The explicit frontend replay described above uses static fixtures and never enters the model pipeline.
 
 ### OpenRouter free fallback
 
@@ -135,7 +145,7 @@ npm run build
 
 The tests exercise the three scenarios, exact NVIDIA model routing through the real SDK, memo isolation, citation fabrication, verifier rejection, missing evidence, episodic memory, SSE, SQL input handling, Zetaris failure boundaries and streaming CSV parsing. Deterministic provider doubles live **only in `tests/`**. They validate orchestration, not the quality or availability of the live models.
 
-For optional browser checks, install `playwright` and its Chromium browser in your test environment. Run `uvicorn tests.browser_fixture:app --port 8001`, then run `BACKEND_URL=http://127.0.0.1:8001 npm run start -- -p 3001` from `frontend/` after building. From the repository root, `python tests/ui_smoke.py` exercises all three verdicts, streamed events, the injection warning, SQL expansion, citation highlighting, JSON export and mobile layout. Set `CHROMIUM_PATH` if using an existing system Chromium. Set `BROWSER_TEST_OPENROUTER_ONLY=1` on both the fixture server and smoke script to check fallback badges and routing evidence. This explicit test harness uses temporary data and provider doubles; the normal backend never imports it.
+For optional browser checks, install `playwright` and its Chromium browser in your test environment. Run `uvicorn tests.browser_fixture:app --port 8001`, then run `BACKEND_URL=http://127.0.0.1:8001 npm run start -- -p 3001` from `frontend/` after building. From the repository root, `python tests/ui_smoke.py` exercises all three live verdicts, streamed events, injection warnings, SQL and row inspection, citation focus, keyboard tabs, JSON export, and layouts from 320px to 1440px. It then blocks the API to check all three offline replays, cancellation, restart, simulation metadata, and absence of investigation POST requests. Set `UI_SCREENSHOT_DIR` to save screenshots. Set `CHROMIUM_PATH` if using an existing system Chromium. Set `BROWSER_TEST_OPENROUTER_ONLY=1` on both the fixture server and smoke script to check fallback badges and routing evidence. This explicit test harness uses temporary data and provider doubles; the normal backend never imports it.
 
 The Actions workflow `.github/workflows/ci_seed.yml` starts Postgres 16 and MongoDB 7, downloads 300 real OpenSanctions rows, seeds both stores, runs backend and service smoke tests, and builds Next.js. It intentionally fails if the live dataset cannot be downloaded. Service tests can also be run locally after seeding with `RUN_SERVICE_TESTS=1 python -m pytest tests/test_services.py -q`.
 
@@ -151,7 +161,7 @@ backend/services/zetaris.py     Bounded federated tools and explicit fallback
 backend/services/database.py    SQL schema, audit runs and episodic memory
 backend/main.py                 FastAPI endpoints and SSE transport
 scripts/seed_open_data.py       Streaming live sample plus labelled demos
-frontend/                      Next.js 14, Tailwind and Lucide investigation desk
+frontend/                      Next.js 14, Tailwind, Framer Motion and Lucide console
 tests/                         Offline provider tests and opt-in service checks
 .github/workflows/ci_seed.yml   Local/CI and optional cloud seeding
 ```

@@ -3,6 +3,8 @@ export type Alert = {
   record_id: string;
   beneficiary_id: string;
   beneficiary_name: string;
+  sender_name: string;
+  timestamp?: string;
   sender_country: string;
   beneficiary_country: string;
   amount_cents: number;
@@ -46,6 +48,7 @@ export type TraceEvent = {
   fallback_reason?: string | null;
   result?: Record<string, unknown>;
   episodes?: number;
+  message?: string;
 };
 export type Investigation = {
   run_id: string;
@@ -68,4 +71,12 @@ export type Investigation = {
   citations_verified: boolean;
   memory_episodes_used: number;
   scope: string;
+  models?: Record<string, string>;
+  model_routes?: TraceEvent[];
+  simulation?: {
+    enabled: true;
+    label: string;
+    model_calls_made: false;
+    memory_persisted: false;
+  };
 };
