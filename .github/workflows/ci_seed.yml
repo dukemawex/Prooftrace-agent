@@ -1,0 +1,100 @@
+name: Seed open data and smoke test
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+    inputs:
+      seed_cloud:
+        description: Seed the databases configured in repository secrets
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+
+jobs:
+  backend-and-data:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: prooftrace
+          POSTGRES_PASSWORD: prooftrace_ci_only
+          POSTGRES_DB: prooftrace
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd "pg_isready -U prooftrace"
+          --health-interval 5s --health-timeout 5s --health-retries 10
+      mongo:
+        image: mongo:7
+        ports: ["27017:27017"]
+        options: >-
+          --health-cmd "mongosh --quiet --eval 'db.adminCommand({ping:1})'"
+          --health-interval 5s --health-timeout 5s --health-retries 10
+    env:
+      DATABASE_URL: postgresql://prooftrace:prooftrace_ci_only@localhost:5432/prooftrace
+      MONGODB_URI: mongodb://localhost:27017
+      MONGODB_DATABASE: prooftrace
+      ALLOW_LOCAL_FALLBACK: "true"
+      RUN_SERVICE_TESTS: "1"
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: requirements.lock.txt
+      - run: pip install -r requirements.lock.txt
+      - name: Check imports
+        run: python -c "from backend.main import app; from backend.agent import InvestigationAgent; print(app.title)"
+      - name: Stream 300 real OpenSanctions rows and seed both silos
+        run: python scripts/seed_open_data.py --rows 300
+      - name: Test pipeline, API, citations, Postgres and MongoDB
+        run: python -m pytest -q
+
+  frontend:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    defaults:
+      run:
+        working-directory: frontend
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+      - run: npm ci
+      - run: npm run build
+        env:
+          NEXT_TELEMETRY_DISABLED: "1"
+
+  seed-cloud:
+    if: github.event_name == 'workflow_dispatch' && inputs.seed_cloud
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      DATABASE_URL: ${{ secrets.PROOFTRACE_DATABASE_URL }}
+      MONGODB_URI: ${{ secrets.PROOFTRACE_MONGODB_URI }}
+      MONGODB_DATABASE: prooftrace
+      ALLOW_LOCAL_FALLBACK: "true"
+      RUN_SERVICE_TESTS: "1"
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: requirements.lock.txt
+      - run: pip install -r requirements.lock.txt
+      - name: Require a configured cloud SQL destination
+        run: python -c "import os; assert os.getenv('DATABASE_URL'), 'Configure PROOFTRACE_DATABASE_URL in repository secrets'"
+      - name: Seed cloud Postgres and optional MongoDB
+        run: python scripts/seed_open_data.py --rows 300
+      - name: Smoke test seeded cloud services
+        run: python -m pytest tests/test_services.py -q
