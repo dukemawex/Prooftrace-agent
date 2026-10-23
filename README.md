@@ -31,6 +31,10 @@ Open **http://localhost:3000**. Select a wire, run the investigation, expand a t
 
 The live workspace loads seeded data without model credentials and shows the provider setup requirement. Live investigations always call NVIDIA Nemotron; unavailable providers produce an explicit error. `frontend/.env.local` can be copied from `frontend/.env.example` when changing `BACKEND_URL` or using the optional backend shared key. The root `.env` is loaded by Python, not by Next.js.
 
+## Deploy
+
+Use [the Render backend and Vercel frontend guide](docs/deployment.md) for hosting, environment variables, cloud seeding, and live verification. The root `render.yaml` defines the FastAPI service, health check, generated backend key, and required PostgreSQL connection. Configure model and Zetaris credentials in Render, then set the Render URL and shared key in Vercel.
+
 ## Interface and demo replay
 
 The interface has three panels: the wire queue, execution log, and findings. Expand a step to inspect its model route, SQL queries, and returned rows. Click a citation to open the source record. Results can be exported as JSON. The interface supports mobile layouts, keyboard navigation, reduced motion, cancellation, and connection retries.
@@ -166,4 +170,6 @@ scripts/seed_open_data.py       Streaming live sample plus labelled demos
 frontend/                      Next.js 14, Tailwind, Framer Motion and Lucide console
 tests/                         Offline provider tests and opt-in service checks
 .github/workflows/ci_seed.yml   Local/CI and optional cloud seeding
+render.yaml                    Render FastAPI service Blueprint
+docs/deployment.md             Render + Vercel setup and verification
 ```

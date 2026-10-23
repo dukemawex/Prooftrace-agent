@@ -1,0 +1,29 @@
+services:
+  - type: web
+    name: teger-trace-agent-api
+    runtime: python
+    plan: free
+    branch: main
+    autoDeployTrigger: checksPass
+    buildCommand: pip install -r requirements.lock.txt
+    startCommand: python -m uvicorn backend.main:app --host 0.0.0.0 --port $PORT --workers 1
+    healthCheckPath: /api/health
+    buildFilter:
+      paths:
+        - backend/**
+        - requirements*.txt
+        - .python-version
+        - render.yaml
+    envVars:
+      - key: DATABASE_URL
+        sync: false
+      - key: PROOFTRACE_API_KEY
+        generateValue: true
+      - key: METERLESS_BASE_URL
+        value: https://api.meterless.io/v1
+      - key: ALLOW_LOCAL_FALLBACK
+        value: "false"
+      - key: PYTHONUNBUFFERED
+        value: "1"
+      # Add model-provider and Zetaris credentials in the Render dashboard.
+      # See docs/deployment.md. The service can start before they are supplied.
