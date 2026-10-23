@@ -57,10 +57,7 @@ export default function InvestigationDesk() {
                 />
               </span>
               <span className="text-[19px] font-semibold tracking-[-0.045em] text-slate-100">
-                Proof<span className="text-cyan-300">Trace</span>
-              </span>
-              <span className="ml-1 hidden rounded border border-slate-700/80 px-1.5 py-0.5 font-mono text-[8px] tracking-widest text-slate-500 sm:inline">
-                CONSOLE
+                Teger <span className="text-cyan-300">Trace</span> Agent
               </span>
             </div>
             <div className="hidden h-5 w-px bg-slate-800 2xl:block" />
@@ -74,8 +71,7 @@ export default function InvestigationDesk() {
                 }
               >
                 <Cpu size={12} className="shrink-0 text-cyan-400" />
-                Powered by{" "}
-                <span className="text-slate-200">NVIDIA Nemotron</span> via
+                <span className="text-slate-200">NVIDIA Nemotron</span> ·
                 Meterless
               </span>
               <span
@@ -83,7 +79,6 @@ export default function InvestigationDesk() {
                 title={source}
               >
                 <Database size={11} className="shrink-0 text-violet-400" />
-                Data Federated by{" "}
                 <span className="text-slate-200">Zetaris</span>
               </span>
             </div>
@@ -103,11 +98,9 @@ export default function InvestigationDesk() {
               >
                 <Play size={12} fill="currentColor" />
                 <span className="hidden sm:inline">
-                  {demo && desk.busy
-                    ? "Restart demo replay"
-                    : "1-Click Demo Replay"}
+                  {demo && desk.busy ? "Restart demo replay" : "Demo replay"}
                 </span>
-                <span className="sm:hidden">Demo Replay</span>
+                <span className="sm:hidden">Demo replay</span>
               </button>
             </div>
           </div>
@@ -120,15 +113,15 @@ export default function InvestigationDesk() {
             <div>
               <div className="mb-3 flex items-center gap-2 font-mono text-[9px] tracking-wider text-slate-500">
                 <ShieldCheck size={11} />
-                <span>INTELLIGENCE WORKSPACE</span>
+                <span>AML</span>
                 <ChevronRight size={10} />
-                <span className="text-slate-400">AML OPERATIONS</span>
+                <span className="text-slate-400">INVESTIGATIONS</span>
               </div>
               <h1 className="text-[28px] font-medium leading-none tracking-[-0.055em] text-slate-100 sm:text-[32px]">
-                Forensic console<span className="text-cyan-300">.</span>
+                Wire investigations
               </h1>
               <p className="mt-3 text-[11px] text-slate-500 sm:text-xs">
-                Follow the money. Inspect the reasoning. Verify the proof.
+                Review transfers, ownership records, and sanctions matches.
               </p>
             </div>
             <div className="flex items-center gap-5 sm:gap-7">
@@ -224,7 +217,7 @@ export default function InvestigationDesk() {
                 {desk.active?.record_id ?? "—"}
               </span>
               <span className="mx-1 text-slate-700">/</span>
-              <span>{demo ? "REPLAY SESSION" : "GLASS-BOX INVESTIGATION"}</span>
+              <span>{demo ? "REPLAY SESSION" : "INVESTIGATION"}</span>
             </div>
             <span className="flex items-center gap-1.5 font-mono text-[8px] text-slate-500">
               <Database size={10} />
@@ -288,14 +281,11 @@ export default function InvestigationDesk() {
             <p className="flex items-center gap-1.5">
               <ShieldCheck size={11} />
               <span>
-                ProofTrace Agent<span className="mx-2 text-slate-700">/</span>
+                Teger Trace Agent<span className="mx-2 text-slate-700">/</span>
                 GenAI.works Open Agent Hackathon 2026
               </span>
             </p>
-            <p className="font-mono text-[8px] tracking-wider">
-              TRACK 02<span className="mx-2 text-slate-700">/</span>THE AGENT
-              THAT CAN EXPLAIN WHY
-            </p>
+            <p className="font-mono text-[8px] tracking-wider">TRACK 02</p>
           </footer>
           <div className="sr-only" role="status" aria-live="polite">
             {desk.busy

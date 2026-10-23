@@ -4,9 +4,9 @@ import "@fontsource-variable/jetbrains-mono";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "ProofTrace · Forensic Console",
+  title: "Teger Trace Agent",
   description:
-    "A glass-box AML investigator powered by NVIDIA Nemotron and Zetaris. Follow every tool call and verify every claim.",
+    "Review flagged wire transfers, ownership records, sanctions matches, and cited findings using NVIDIA Nemotron and Zetaris.",
 };
 
 export default function RootLayout({

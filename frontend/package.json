@@ -1,5 +1,5 @@
 {
-  "name": "prooftrace-agent-ui",
+  "name": "teger-trace-agent-ui",
   "version": "1.0.0",
   "private": true,
   "scripts": {

@@ -1,1 +1,1 @@
-"""ProofTrace: an evidence-bound NVIDIA Nemotron AML investigation agent."""
+"""Teger Trace Agent: AML investigations using NVIDIA Nemotron and Zetaris."""

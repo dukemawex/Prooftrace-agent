@@ -56,7 +56,7 @@ export function WireQueue({
         }
       />
       <div className="flex items-center justify-between px-5 pb-3 pt-4">
-        <span className="eyebrow">Pending investigation</span>
+        <span className="eyebrow">Flagged transfers</span>
         <span className="rounded border border-slate-700/70 bg-slate-800/60 px-1.5 font-mono text-[10px] text-slate-300">
           {loading ? "—" : String(alerts.length).padStart(2, "0")}
         </span>
@@ -173,7 +173,7 @@ export function WireQueue({
             </p>
             <p className="mt-2 text-[11px] leading-relaxed text-slate-500">
               {offline
-                ? "Reconnect to the API, or start a demo replay to explore the console."
+                ? "Reconnect to the API or replay a demo case."
                 : "New flagged transfers will appear here."}
             </p>
           </div>
@@ -205,7 +205,7 @@ export function WireQueue({
         <p className="text-[10px] leading-relaxed text-slate-400">
           {demo
             ? "Replay isolated. Live risk memory unchanged."
-            : "Context only. Every run screens fresh evidence."}
+            : "Previous results are context, not evidence."}
         </p>
       </div>
       <details className="group mx-4 mb-4 mt-auto shrink-0 rounded-xl border border-slate-800/80 bg-[#080d15]/60 p-3">

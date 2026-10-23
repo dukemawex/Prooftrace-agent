@@ -29,31 +29,30 @@ const STAGES = [
   {
     key: "guard",
     number: "01",
-    title: "Guard & triage",
+    title: "Memo screening",
     size: "NANO · 8B",
     icon: ShieldCheck,
     model: "nvidia/llama-3.1-nemotron-nano-8b-v1",
-    description: "Inspect the payment memo. Isolate untrusted instructions.",
+    description: "Check the payment memo for injected instructions.",
   },
   {
     key: "planner",
     number: "02",
-    title: "Federated investigation",
+    title: "Ownership and sanctions",
     size: "SUPER · 49B",
     icon: GitBranch,
     model: "nvidia/llama-3.3-nemotron-super-49b-v1",
-    description:
-      "Follow ownership across silos. Test the sanctions hypothesis.",
+    description: "Query ownership records and screen the recorded owners.",
   },
   {
     key: "synthesizer",
     number: "03",
-    title: "Synthesize & verify",
+    title: "Report and verification",
     size: "NEMOTRON · 70B",
     icon: Fingerprint,
     model: "nvidia/llama-3.1-nemotron-70b-instruct",
     description:
-      "Build the SAR narrative. Verify every claim against its source.",
+      "Draft the report and check its claims against the retrieved records.",
   },
 ];
 
@@ -374,8 +373,8 @@ function StageNode({
                             : "Guard complete · memo quarantined"}
                         </p>
                         <p className="mt-1 text-[10px] leading-relaxed text-slate-400">
-                          Only isolated transaction data continues to the
-                          planner.
+                          The planner receives structured fields without the
+                          memo.
                         </p>
                       </div>
                     </div>
@@ -425,7 +424,7 @@ function StageNode({
                     <div className="flex items-center gap-2 text-[10px] text-cyan-300">
                       <CheckCheck size={13} />
                       {demo
-                        ? "Fixture citations checked · simulated synthesis"
+                        ? "Demo citations checked · simulated report"
                         : "Citations and semantic support verified"}
                     </div>
                   )}
@@ -491,7 +490,7 @@ export function ExecutionPipeline({
     >
       <PanelHeading
         icon={<Workflow size={16} />}
-        title="NVIDIA Nemotron + Zetaris execution pipeline"
+        title="NVIDIA Nemotron + Zetaris"
         aside={
           <span className="hidden h-5 w-5 items-center justify-center rounded border border-slate-700/60 font-mono text-[9px] text-slate-500 sm:flex">
             02
@@ -500,11 +499,9 @@ export function ExecutionPipeline({
       />
       <div className="flex items-center justify-between gap-3 px-5 pb-3 pt-5">
         <div>
-          <p className="text-sm font-medium text-slate-100">
-            Live execution trace
-          </p>
+          <p className="text-sm font-medium text-slate-100">Execution log</p>
           <p className="mt-1 text-[10px] text-slate-500">
-            Every tool call. Every observation. Every source.
+            Model calls, SQL queries, and returned records.
           </p>
         </div>
         <RunStatus busy={busy} complete={Boolean(result)} demo={demo} />

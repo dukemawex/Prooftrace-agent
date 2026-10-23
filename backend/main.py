@@ -25,7 +25,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         await asyncio.to_thread(database.init_schema)
         yield
 
-    api = FastAPI(title="ProofTrace Agent", version="1.0.0", lifespan=lifespan)
+    api = FastAPI(title="Teger Trace Agent", version="1.0.0", lifespan=lifespan)
     api.state.database = database
     api.state.settings = config
     api.add_middleware(CORSMiddleware, allow_origins=config.cors_origins,

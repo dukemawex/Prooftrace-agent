@@ -136,7 +136,7 @@ function SafetyShield({
   return (
     <section
       className={`rounded-xl border p-4 ${blocked ? "border-red-900/50 bg-red-950/10" : "border-slate-800/80 bg-[#0a1019]/80"}`}
-      aria-label="Safety and injection shield"
+      aria-label="Memo screening status"
     >
       <div className="mb-3 flex items-center gap-2">
         <span
@@ -145,7 +145,7 @@ function SafetyShield({
           {blocked ? <ShieldAlert size={14} /> : <ShieldCheck size={14} />}
         </span>
         <h3 className="text-[11px] font-medium text-slate-200">
-          Safety & Injection Shield
+          Memo screening
         </h3>
         <span
           className={`ml-auto h-1.5 w-1.5 rounded-full ${waiting ? "bg-slate-600" : blocked ? "bg-red-400" : "bg-cyan-300"}`}
@@ -157,17 +157,17 @@ function SafetyShield({
         {waiting
           ? busy
             ? "Inspecting untrusted input…"
-            : "Awaiting guard triage"
+            : "Awaiting memo check"
           : blocked
             ? "Injection detected. Memo quarantined."
             : "No injection detected. Memo quarantined."}
       </p>
       <p className="mt-2 text-[10px] leading-relaxed text-slate-500">
         {waiting
-          ? "Incoming memos are screened before the multi-hop investigation begins."
+          ? "The payment memo is checked before ownership and sanctions screening."
           : blocked
-            ? "The override instruction was isolated. Sanctions screening continued using trusted tool parameters."
-            : "Payment memo text stays isolated from planner instructions and SQL tool parameters."}
+            ? "The memo was quarantined. Sanctions screening continued."
+            : "The memo was excluded from subsequent model instructions."}
       </p>
       <div className="mt-3 flex flex-wrap items-center gap-1.5 border-t border-slate-800/80 pt-3 font-mono text-[8px] text-slate-500">
         <LockKeyhole size={10} />
@@ -200,12 +200,12 @@ function EmptyDossier({ busy, loading }: { busy: boolean; loading: boolean }) {
         </span>
       </div>
       <h3 className="text-sm font-medium text-slate-200">
-        {busy ? "Following the evidence" : "A verdict backed by proof"}
+        {busy ? "Investigation in progress" : "No findings yet"}
       </h3>
       <p className="mb-5 mt-2 max-w-[240px] text-[11px] leading-relaxed text-slate-500">
         {busy
-          ? "The dossier will unlock when the narrative and its citations are verified."
-          : "Select a flagged wire and start an investigation. Every finding leads back to its source."}
+          ? "The report and its citations must pass verification before results appear."
+          : "Select a wire, then run an investigation."}
       </p>
       {busy || loading ? (
         <div
@@ -219,12 +219,7 @@ function EmptyDossier({ busy, loading }: { busy: boolean; loading: boolean }) {
             <LoadingDots />
           </div>
         </div>
-      ) : (
-        <div className="flex items-center gap-1.5 rounded-full border border-slate-800 px-3 py-1.5 font-mono text-[8px] text-slate-500">
-          <Link2 size={10} />
-          SOURCE-LINKED BY DESIGN
-        </div>
-      )}
+      ) : null}
     </div>
   );
 }
@@ -268,7 +263,7 @@ export function EvidenceDossier({
     );
     const link = document.createElement("a");
     link.href = url;
-    link.download = `prooftrace-${demo ? "SIMULATED-" : ""}${result.txn_id}-${result.run_id}.json`;
+    link.download = `teger-trace-agent-${demo ? "SIMULATED-" : ""}${result.txn_id}-${result.run_id}.json`;
     link.click();
     setTimeout(() => URL.revokeObjectURL(url), 1000);
   }
@@ -281,7 +276,7 @@ export function EvidenceDossier({
     >
       <PanelHeading
         icon={<FileCheck2 size={15} />}
-        title="Compliance verdict & citation proof"
+        title="Findings and evidence"
         aside={
           result ? (
             <button
@@ -327,7 +322,7 @@ export function EvidenceDossier({
                 className={`text-xl font-medium tracking-[-0.04em] ${cleared ? "text-cyan-200" : review ? "text-amber-200" : "text-red-200"}`}
               >
                 {cleared
-                  ? "Clear with proof"
+                  ? "Cleared"
                   : review
                     ? "Manual review required"
                     : "Escalate for review"}
@@ -382,7 +377,7 @@ export function EvidenceDossier({
                   className={`relative flex-1 px-2 pb-3 text-[10px] font-medium ${tab === item ? "text-cyan-300" : "text-slate-500 hover:text-slate-300"}`}
                 >
                   {item === "narrative"
-                    ? "SAR narrative"
+                    ? "SAR draft"
                     : `Evidence (${evidenceCount})`}
                   {tab === item && (
                     <motion.span
@@ -484,9 +479,9 @@ export function EvidenceDossier({
             <div className="mt-4 flex items-center gap-1.5 text-[9px] text-cyan-400/80">
               <CheckCheck size={12} />
               {demo
-                ? "Fixture citation facts checked"
+                ? "Demo citations checked"
                 : result.citations_verified
-                  ? "Every citation checked against source evidence"
+                  ? "Citations checked against source records"
                   : "Citation verification unavailable"}
             </div>
             <p className="mt-2 text-[9px] leading-relaxed text-slate-500">

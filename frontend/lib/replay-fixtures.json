@@ -589,7 +589,7 @@
           {
             "citation": "opensanctions_watchlist.DEMO-SANCTION-VR01",
             "field": "datasets",
-            "value": "ProofTrace fictional sanctions-evasion scenario"
+            "value": "Teger Trace Agent fictional sanctions scenario"
           }
         ]
       }
@@ -884,7 +884,7 @@
             "schema_type": "Person",
             "aliases": "",
             "countries": "ae",
-            "datasets": "ProofTrace fictional sanctions-evasion scenario",
+            "datasets": "Teger Trace Agent fictional sanctions scenario",
             "identifiers": "DEMO-PASSPORT-VR01",
             "source_url": "urn:prooftrace:fictional:DEMO-SANCTION-VR01",
             "fetched_at": "2026-10-22T09:00:00+00:00",
@@ -1047,14 +1047,14 @@
         "schema_type": "Person",
         "aliases": "",
         "countries": "ae",
-        "datasets": "ProofTrace fictional sanctions-evasion scenario",
+        "datasets": "Teger Trace Agent fictional sanctions scenario",
         "identifiers": "DEMO-PASSPORT-VR01",
         "source_url": "urn:prooftrace:fictional:DEMO-SANCTION-VR01",
         "fetched_at": "2026-10-22T09:00:00+00:00",
         "is_demo": 1
       }
     },
-    "evidence_digest": "11fd03e7ef3b180908d442a937275a679ff2bf91bc0d5cff93badbf176cb4521",
+    "evidence_digest": "9f0e8f2c8208e368a34cf64377ba81a3a480e05bdd6a93a9303376a3f4c141df",
     "models": {
       "guard": "nvidia/llama-3.1-nemotron-nano-8b-v1",
       "planner": "nvidia/llama-3.3-nemotron-super-49b-v1",
@@ -1184,7 +1184,7 @@
           {
             "citation": "opensanctions_watchlist.DEMO-SANCTION-VR01",
             "field": "datasets",
-            "value": "ProofTrace fictional sanctions-evasion scenario"
+            "value": "Teger Trace Agent fictional sanctions scenario"
           }
         ]
       }
@@ -1479,7 +1479,7 @@
             "schema_type": "Person",
             "aliases": "",
             "countries": "ae",
-            "datasets": "ProofTrace fictional sanctions-evasion scenario",
+            "datasets": "Teger Trace Agent fictional sanctions scenario",
             "identifiers": "DEMO-PASSPORT-VR01",
             "source_url": "urn:prooftrace:fictional:DEMO-SANCTION-VR01",
             "fetched_at": "2026-10-22T09:00:00+00:00",
@@ -1642,14 +1642,14 @@
         "schema_type": "Person",
         "aliases": "",
         "countries": "ae",
-        "datasets": "ProofTrace fictional sanctions-evasion scenario",
+        "datasets": "Teger Trace Agent fictional sanctions scenario",
         "identifiers": "DEMO-PASSPORT-VR01",
         "source_url": "urn:prooftrace:fictional:DEMO-SANCTION-VR01",
         "fetched_at": "2026-10-22T09:00:00+00:00",
         "is_demo": 1
       }
     },
-    "evidence_digest": "3b58b1d678a3c7951c6fc1de6c862952bb130e6cf07c0a2940b2aab1183d1062",
+    "evidence_digest": "df6ba71acd6ddecec8248d30a31b419e6f9acb63900d4f694131df9fdc82be65",
     "models": {
       "guard": "nvidia/llama-3.1-nemotron-nano-8b-v1",
       "planner": "nvidia/llama-3.3-nemotron-super-49b-v1",

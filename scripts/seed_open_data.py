@@ -28,7 +28,7 @@ def fetch_opensanctions(count: int = 300) -> list[dict]:
     fetched = utcnow()
     rows: dict[str, dict] = {}
     with httpx.Client(timeout=httpx.Timeout(60, connect=20), follow_redirects=True) as client:
-        with client.stream("GET", OPENSANCTIONS_URL, headers={"User-Agent": "ProofTrace-Hackathon/1.0"}) as response:
+        with client.stream("GET", OPENSANCTIONS_URL, headers={"User-Agent": "Teger-Trace-Agent/1.0"}) as response:
             response.raise_for_status()
             reader = csv.DictReader(response.iter_lines())
             if not {"id", "name"}.issubset(reader.fieldnames or []):
@@ -105,7 +105,7 @@ def seed(settings: Settings, count: int = 300, offline: bool = False) -> dict:
     db.upsert("icij_kyc_entities", entities)
     db.upsert("opensanctions_watchlist", live + [{
         "record_id": "DEMO-SANCTION-VR01", "name": "Viktor Rostov", "schema_type": "Person",
-        "aliases": "", "countries": "ae", "datasets": "ProofTrace fictional sanctions-evasion scenario",
+        "aliases": "", "countries": "ae", "datasets": "Teger Trace Agent fictional sanctions scenario",
         "identifiers": "DEMO-PASSPORT-VR01", "source_url": "urn:prooftrace:fictional:DEMO-SANCTION-VR01",
         "fetched_at": utcnow(), "is_demo": 1,
     }])
