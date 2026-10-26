@@ -10,6 +10,9 @@ export type Alert = {
   amount_cents: number;
   currency: string;
   payment_memo: string;
+  invoice_id?: string | null;
+  invoice_amount_cents?: number | null;
+  invoice_verified?: number;
   alert_reason: string;
   typology: string;
   memory_episodes: number;
@@ -63,7 +66,13 @@ export type Investigation = {
     reason: string;
     memo_quarantined: boolean;
   };
-  policy: { chain: string[]; reason: string };
+  policy: {
+    chain: string[];
+    reason: string;
+    sanctions_matches?: string[];
+    ownership_complete?: boolean;
+    cross_silo_checked?: boolean;
+  };
   trace: TraceEvent[];
   evidence: Record<string, Row>;
   evidence_digest: string;

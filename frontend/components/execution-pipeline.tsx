@@ -17,6 +17,7 @@ import {
   Loader2,
   LockKeyhole,
   Play,
+  ShieldAlert,
   ShieldCheck,
   Square,
   Terminal,
@@ -77,7 +78,7 @@ function SQL({ text }: { text: string }) {
                   : /^(SELECT|FROM|.*JOIN|ON|WHERE|AND|OR|AS|LIMIT|ORDER BY|WITH|RECURSIVE|UNION ALL|IS|NOT|NULL)$/i.test(
                         part,
                       )
-                    ? "text-cyan-300"
+                    ? "font-semibold text-cyan-300"
                     : ""
               }
             >
@@ -94,18 +95,18 @@ function QueryCard({ event }: { event: TraceEvent }) {
   const [tab, setTab] = useState<"sql" | "rows">("sql");
   const id = useId();
   return (
-    <div className="overflow-hidden rounded-lg border border-slate-800/80 bg-[#0a101b]/80">
+    <div className="overflow-hidden rounded-lg border border-slate-800/90 bg-[#080d17]/90 transition-colors hover:border-slate-700/80">
       <button
-        className="flex w-full items-center gap-2 px-3 py-2.5 text-left hover:bg-slate-800/35"
+        className="flex w-full items-center gap-2 px-3 py-2.5 text-left transition-colors hover:bg-slate-800/35"
         aria-expanded={open}
         aria-controls={id}
         onClick={() => setOpen(!open)}
       >
-        <Terminal size={12} className="shrink-0 text-cyan-400/80" />
-        <span className="min-w-0 flex-1 break-words text-[10px] text-slate-300">
+        <Terminal size={12} className="shrink-0 text-cyan-400" />
+        <span className="min-w-0 flex-1 break-words font-mono text-[10px] font-medium text-slate-200">
           {event.tool?.replaceAll("_", " ")}
         </span>
-        <span className="shrink-0 font-mono text-[9px] text-slate-500">
+        <span className="shrink-0 rounded bg-slate-800/80 px-1.5 py-0.5 font-mono text-[9px] text-cyan-300/90">
           {event.rows?.length ?? 0} rows
         </span>
         <ChevronDown
@@ -122,29 +123,29 @@ function QueryCard({ event }: { event: TraceEvent }) {
             exit={{ height: 0, opacity: 0 }}
             className="overflow-hidden"
           >
-            <div className="border-t border-slate-800 px-3 pb-3 pt-2">
+            <div className="border-t border-slate-800/90 bg-[#050911] px-3 pb-3 pt-2.5">
               <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
                 <div
-                  className="flex gap-1"
+                  className="flex gap-1 rounded-md border border-slate-800 bg-[#090f1c] p-0.5"
                   role="group"
                   aria-label="Query view"
                 >
                   <button
-                    className={`rounded px-2 py-1 font-mono text-[9px] ${tab === "sql" ? "bg-cyan-400/10 text-cyan-300" : "text-slate-500"}`}
+                    className={`rounded px-2 py-1 font-mono text-[9px] transition-colors ${tab === "sql" ? "bg-cyan-400/15 font-semibold text-cyan-200" : "text-slate-400 hover:text-slate-200"}`}
                     onClick={() => setTab("sql")}
                     aria-pressed={tab === "sql"}
                   >
                     SQL
                   </button>
                   <button
-                    className={`rounded px-2 py-1 font-mono text-[9px] ${tab === "rows" ? "bg-cyan-400/10 text-cyan-300" : "text-slate-500"}`}
+                    className={`rounded px-2 py-1 font-mono text-[9px] transition-colors ${tab === "rows" ? "bg-cyan-400/15 font-semibold text-cyan-200" : "text-slate-400 hover:text-slate-200"}`}
                     onClick={() => setTab("rows")}
                     aria-pressed={tab === "rows"}
                   >
                     Returned rows ({event.rows?.length ?? 0})
                   </button>
                 </div>
-                <span className="font-mono text-[8px] text-slate-500">
+                <span className="font-mono text-[8px] text-slate-400">
                   {event.source}{" "}
                   {event.source !== "demo-replay" &&
                     `· ${event.duration_ms ?? 0} ms`}
@@ -219,15 +220,15 @@ function StageNode({
   const guard = latestStage?.result;
   const Icon = stage.icon;
   return (
-    <div className="relative pb-5 last:pb-0">
+    <div className="relative pb-4 last:pb-0">
       {stage.key !== "synthesizer" && (
         <div
-          className={`absolute bottom-0 left-[17px] top-9 w-px ${complete ? "bg-cyan-900/70" : "bg-slate-800"}`}
+          className={`absolute bottom-0 left-[17px] top-9 w-0.5 ${complete ? "bg-gradient-to-b from-cyan-400/70 to-cyan-900/30" : "bg-slate-800"}`}
         />
       )}
       <div className="flex items-start gap-3">
         <div
-          className={`relative z-10 flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border ${running ? "border-cyan-400/60 bg-cyan-950/80 text-cyan-300 shadow-[0_0_22px_-8px_#22d3ee70]" : complete ? "border-cyan-900/80 bg-[#0b2029] text-cyan-400" : "border-slate-700/60 bg-[#121a26] text-slate-500"}`}
+          className={`relative z-10 flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border transition-all ${running ? "border-cyan-400/70 bg-cyan-950/90 text-cyan-200 shadow-[0_0_24px_-6px_rgba(34,211,238,0.65)]" : complete ? "border-cyan-500/40 bg-[#0b222e] text-cyan-300 shadow-[0_0_16px_-8px_rgba(34,211,238,0.4)]" : "border-slate-700/60 bg-[#0e1624] text-slate-500"}`}
         >
           {running ? (
             <Loader2 size={15} className="animate-spin" />
@@ -238,26 +239,26 @@ function StageNode({
           )}
         </div>
         <div
-          className={`min-w-0 flex-1 overflow-hidden rounded-xl border ${running ? "border-cyan-800/50 bg-cyan-950/10" : "border-slate-800/80 bg-[#0c121d]/55"}`}
+          className={`min-w-0 flex-1 overflow-hidden rounded-xl border transition-all ${running ? "border-cyan-500/45 bg-gradient-to-br from-cyan-950/25 to-[#0b1220]" : complete ? "border-slate-700/80 bg-[#0b1220]/80" : "border-slate-800/80 bg-[#090f1b]/65"}`}
         >
           <button
-            className="w-full p-3.5 text-left"
+            className="w-full p-3.5 text-left transition-colors hover:bg-slate-800/20"
             aria-expanded={open}
             aria-controls={id}
             onClick={() => setManualOpen(!open)}
           >
-            <div className="mb-2 flex items-center gap-2">
-              <span className="font-mono text-[9px] text-slate-500">
+            <div className="mb-1.5 flex items-center gap-2">
+              <span className="rounded bg-slate-800/80 px-1.5 py-0.5 font-mono text-[8px] font-semibold text-slate-400">
                 STEP {stage.number}
               </span>
               <span
-                className={`model-size ml-auto font-mono text-[8px] tracking-wide ${fallback ? "text-amber-400" : "text-cyan-400/85"}`}
+                className={`model-size ml-auto rounded border px-1.5 py-0.5 font-mono text-[8px] font-semibold tracking-wide ${fallback ? "border-amber-500/30 bg-amber-950/40 text-amber-300" : "border-cyan-500/25 bg-cyan-950/35 text-cyan-300"}`}
               >
                 {fallback ? "OPENROUTER · FREE" : stage.size}
               </span>
             </div>
             <div className="flex items-center gap-2">
-              <h3 className="text-xs font-medium text-slate-100">
+              <h3 className="text-xs font-semibold text-slate-100">
                 {stage.title}
               </h3>
               <ChevronDown
@@ -269,7 +270,7 @@ function StageNode({
               <span
                 className={
                   running || complete
-                    ? "text-cyan-400/80"
+                    ? "text-cyan-300"
                     : interrupted
                       ? "text-amber-400"
                       : "text-slate-500"
@@ -287,7 +288,7 @@ function StageNode({
               </span>
               {running && <LoadingDots />}
               {queries.length > 0 && (
-                <span className="ml-auto text-slate-500">
+                <span className="ml-auto rounded bg-slate-800/70 px-1.5 py-0.5 text-[8px] text-slate-300">
                   {queries.length} queries
                 </span>
               )}
@@ -303,28 +304,28 @@ function StageNode({
                 transition={{ duration: 0.22 }}
                 className="overflow-hidden"
               >
-                <div className="space-y-3 border-t border-slate-800/70 p-3.5">
+                <div className="space-y-3 border-t border-slate-800/75 bg-[#070c15]/60 p-3.5">
                   {!complete && (
                     <p className="text-[11px] leading-relaxed text-slate-400">
                       {stage.description}
                     </p>
                   )}
-                  <div className="model-routes rounded-lg border border-slate-800/80 bg-[#070c14] px-2.5 py-2">
-                    <div className="mb-1 flex items-center gap-1.5 font-mono text-[8px] uppercase tracking-wider text-slate-500">
-                      <Code2 size={10} />
+                  <div className="model-routes rounded-lg border border-slate-800/90 bg-[#060a12] px-3 py-2">
+                    <div className="mb-1 flex items-center gap-1.5 font-mono text-[8px] uppercase tracking-wider text-slate-400">
+                      <Code2 size={10} className="text-cyan-400" />
                       {demo
                         ? "Simulated model route"
                         : route
                           ? `Routed via ${route.provider}`
                           : "Configured model route"}
                     </div>
-                    <p className="break-all font-mono text-[9px] leading-relaxed text-slate-400">
+                    <p className="break-all font-mono text-[9px] leading-relaxed text-cyan-200/90">
                       {model}
                     </p>
                   </div>
                   {events.some((event) => event.type === "model_call") && (
                     <details className="text-[9px] text-slate-400">
-                      <summary className="cursor-pointer py-1">
+                      <summary className="cursor-pointer py-1 font-mono text-[9px] text-slate-400 hover:text-slate-200">
                         Model routing audit
                       </summary>
                       <div className="mt-2 space-y-2">
@@ -332,7 +333,7 @@ function StageNode({
                           .filter((event) => event.type === "model_call")
                           .map((event) => (
                             <div
-                              className="rounded border border-slate-800 p-2 font-mono"
+                              className="rounded border border-slate-800 bg-[#05080f] p-2 font-mono"
                               key={event.id}
                             >
                               <p
@@ -363,16 +364,16 @@ function StageNode({
                   )}
                   {stage.key === "guard" && complete && (
                     <div
-                      className={`flex gap-2 rounded-lg border p-2.5 ${guard?.injection_detected ? "border-red-900/60 bg-red-950/20 text-red-300" : "border-cyan-900/50 bg-cyan-950/20 text-cyan-300"}`}
+                      className={`flex gap-2 rounded-lg border p-2.5 ${guard?.injection_detected ? "border-red-500/40 bg-red-950/25 text-red-200" : "border-cyan-500/35 bg-cyan-950/25 text-cyan-200"}`}
                     >
                       <LockKeyhole size={12} className="mt-0.5 shrink-0" />
                       <div>
-                        <p className="text-[10px] font-medium">
+                        <p className="text-[10px] font-semibold">
                           {guard?.injection_detected
                             ? "Injection blocked · memo quarantined"
                             : "Guard complete · memo quarantined"}
                         </p>
-                        <p className="mt-1 text-[10px] leading-relaxed text-slate-400">
+                        <p className="mt-1 text-[10px] leading-relaxed text-slate-300">
                           The planner receives structured fields without the
                           memo.
                         </p>
@@ -388,7 +389,7 @@ function StageNode({
                       )}
                       {queries.length > 1 && (
                         <button
-                          className="flex w-full items-center justify-between rounded-lg px-1 py-1.5 text-[10px] text-slate-400 hover:text-cyan-300"
+                          className="flex w-full items-center justify-between rounded-lg border border-slate-800/80 bg-[#090f1b] px-2.5 py-1.5 font-mono text-[9px] text-slate-300 transition-colors hover:border-cyan-500/40 hover:text-cyan-200"
                           aria-expanded={allQueries}
                           onClick={() => setAllQueries(!allQueries)}
                         >
@@ -397,15 +398,15 @@ function StageNode({
                             : `View all ${queries.length} tool calls`}
                           <ChevronRight
                             size={12}
-                            className={allQueries ? "rotate-90" : ""}
+                            className={`transition-transform ${allQueries ? "rotate-90" : ""}`}
                           />
                         </button>
                       )}
                     </div>
                   )}
                   {stage.key === "planner" && complete && (
-                    <details className="rounded-lg border border-slate-800 p-2.5">
-                      <summary className="cursor-pointer text-[10px] text-slate-400">
+                    <details className="rounded-lg border border-slate-800 bg-[#060a12] p-2.5">
+                      <summary className="cursor-pointer font-mono text-[9px] text-slate-400 hover:text-slate-200">
                         Observation · verdict policy
                       </summary>
                       <p className="mt-2 text-[10px] leading-relaxed text-slate-300">
@@ -421,8 +422,8 @@ function StageNode({
                     </details>
                   )}
                   {stage.key === "synthesizer" && complete && (
-                    <div className="flex items-center gap-2 text-[10px] text-cyan-300">
-                      <CheckCheck size={13} />
+                    <div className="flex items-center gap-2 rounded-lg border border-cyan-500/25 bg-cyan-950/20 px-2.5 py-2 text-[10px] font-medium text-cyan-200">
+                      <CheckCheck size={13} className="text-cyan-400" />
                       {demo
                         ? "Demo citations checked · simulated report"
                         : "Citations and semantic support verified"}
@@ -482,6 +483,12 @@ export function ExecutionPipeline({
     !demo &&
     (health?.model_runtime.preferred_provider === "openrouter" ||
       trace.some((event) => event.provider === "openrouter"));
+  const suspiciousMemo = Boolean(
+    active?.payment_memo &&
+      /system\s+override|ignore\b.{0,100}\bsanction|mark\s+cleared/i.test(
+        active.payment_memo,
+      ),
+  );
   return (
     <section
       id="execution-trace"
@@ -489,46 +496,50 @@ export function ExecutionPipeline({
       aria-label="Execution pipeline"
     >
       <PanelHeading
-        icon={<Workflow size={16} />}
+        icon={<Workflow size={14} />}
         title="NVIDIA Nemotron + Zetaris"
         aside={
-          <span className="hidden h-5 w-5 items-center justify-center rounded border border-slate-700/60 font-mono text-[9px] text-slate-500 sm:flex">
-            02
+          <span className="hidden h-5 items-center justify-center rounded border border-slate-700/60 bg-slate-900 px-1.5 font-mono text-[9px] text-slate-400 sm:flex">
+            3-STAGE PIPELINE
           </span>
         }
       />
-      <div className="flex items-center justify-between gap-3 px-5 pb-3 pt-5">
+      <div className="flex items-center justify-between gap-3 px-5 pb-3 pt-4">
         <div>
-          <p className="text-sm font-medium text-slate-100">Execution log</p>
-          <p className="mt-1 text-[10px] text-slate-500">
+          <p className="text-sm font-semibold text-slate-100">Execution log</p>
+          <p className="mt-0.5 text-[10px] text-slate-400">
             Model calls, SQL queries, and returned records.
           </p>
         </div>
         <RunStatus busy={busy} complete={Boolean(result)} demo={demo} />
       </div>
       <div
-        className="mx-5 mb-5 flex items-center gap-1.5"
+        className="mx-5 mb-4 flex items-center gap-1.5"
         aria-label={`${completed} of 3 stages complete`}
       >
         {STAGES.map((stage, i) => (
           <div
             key={stage.key}
-            className={`h-1 flex-1 rounded-full ${completed > i ? "bg-cyan-400/80" : busy && completed === i ? "animate-pulse bg-cyan-400/40" : "bg-slate-800"}`}
+            className={`h-1.5 flex-1 rounded-full transition-all ${completed > i ? "bg-gradient-to-r from-cyan-400 to-teal-300 shadow-[0_0_10px_rgba(34,211,238,0.4)]" : busy && completed === i ? "animate-pulse bg-cyan-400/50" : "bg-slate-800"}`}
           />
         ))}
-        <span className="ml-2 font-mono text-[9px] text-slate-500">
+        <span className="ml-2 font-mono text-[9px] font-semibold text-slate-400">
           {completed}/3
         </span>
       </div>
       {fallback && (
-        <div className="mx-5 mb-4 flex items-center gap-2 rounded-lg border border-amber-800/40 bg-amber-950/15 px-3 py-2 text-[9px] text-amber-400">
-          <span className="h-1 w-1 rounded-full bg-amber-400" />
-          <span>FREE FALLBACK ACTIVE</span>
-          <span className="ml-auto font-mono">NVIDIA ONLY</span>
+        <div className="mx-5 mb-3.5 flex items-center gap-2 rounded-lg border border-amber-500/35 bg-amber-950/25 px-3 py-2 text-[9px] text-amber-300">
+          <span className="h-1.5 w-1.5 rounded-full bg-amber-400" />
+          <span className="font-semibold tracking-wide">
+            FREE FALLBACK ACTIVE
+          </span>
+          <span className="ml-auto font-mono text-[8px] text-amber-200/90">
+            NVIDIA ONLY
+          </span>
         </div>
       )}
       <div
-        className="min-h-[370px] space-y-0 overflow-y-auto px-5 pb-5 xl:min-h-0 xl:flex-1 xl:!shrink"
+        className="min-h-[370px] space-y-0 overflow-y-auto px-5 pb-4 xl:min-h-0 xl:flex-1 xl:!shrink"
         aria-busy={busy || loading}
       >
         {loading
@@ -556,40 +567,49 @@ export function ExecutionPipeline({
               />
             ))}
       </div>
-      <div className="mx-5 mb-4 mt-auto rounded-xl border border-slate-800/80 bg-[#0a0f19]/70">
-        <details className="group">
-          <summary className="flex cursor-pointer list-none items-center gap-2 p-3 text-[10px] text-slate-400">
-            <FileCode2 size={13} />
-            <span>Payment memo</span>
-            <span className="ml-auto font-mono text-[8px] text-slate-500">
-              UNTRUSTED INPUT
+      <div
+        className={`mx-5 mb-3.5 mt-auto rounded-xl border ${suspiciousMemo ? "border-red-500/35 bg-red-950/15" : "border-slate-800/85 bg-[#080d17]/80"}`}
+      >
+        <details className="group" open={suspiciousMemo}>
+          <summary className="flex cursor-pointer list-none items-center gap-2 p-3 text-[10px] text-slate-300">
+            {suspiciousMemo ? (
+              <ShieldAlert size={13} className="shrink-0 text-red-400" />
+            ) : (
+              <FileCode2 size={13} className="shrink-0 text-cyan-400" />
+            )}
+            <span className="font-medium">Payment memo</span>
+            <span
+              className={`ml-auto rounded px-1.5 py-0.5 font-mono text-[8px] font-semibold ${suspiciousMemo ? "bg-red-500/20 text-red-300" : "bg-slate-800 text-slate-400"}`}
+            >
+              {suspiciousMemo ? "INJECTION PAYLOAD" : "UNTRUSTED INPUT"}
             </span>
             <ChevronDown
               size={12}
-              className="transition-transform group-open:rotate-180"
+              className="text-slate-500 transition-transform group-open:rotate-180"
             />
           </summary>
-          <p className="break-words border-t border-slate-800 px-3 py-3 font-mono text-[10px] leading-relaxed text-slate-400">
+          <p className="break-words border-t border-slate-800/80 px-3 py-2.5 font-mono text-[10px] leading-relaxed text-slate-300">
             {active?.payment_memo ??
               "Select a flagged wire to inspect its memo."}
           </p>
         </details>
       </div>
-      <div className="flex flex-wrap items-center gap-x-5 gap-y-2 border-t border-slate-800/80 px-5 py-3 font-mono text-[9px] text-slate-500">
+      <div className="flex flex-wrap items-center gap-x-5 gap-y-2 border-t border-slate-800/80 bg-[#070b14]/60 px-5 py-2.5 font-mono text-[9px] text-slate-400">
         <span className="flex items-center gap-1.5">
-          <Terminal size={11} />
-          <span className="text-slate-300">{queries.length}</span> queries
+          <Terminal size={11} className="text-cyan-400" />
+          <span className="font-semibold text-slate-200">{queries.length}</span>{" "}
+          queries
         </span>
         <span className="flex items-center gap-1.5">
-          <Database size={11} />
-          <span className="text-slate-300">{rows}</span> rows
+          <Database size={11} className="text-violet-400" />
+          <span className="font-semibold text-slate-200">{rows}</span> rows
         </span>
-        <span className="ml-auto flex items-center gap-1.5">
+        <span className="ml-auto flex items-center gap-1.5 text-cyan-300/90">
           <Clock3 size={11} />
           {elapsed.toFixed(1)}s{demo ? " replay" : " elapsed"}
         </span>
       </div>
-      <div className="border-t border-slate-800/80 p-4">
+      <div className="border-t border-slate-800/80 bg-[#060a12]/80 p-4">
         {busy ? (
           <button className="button-quiet w-full" onClick={cancel}>
             <Square size={11} />

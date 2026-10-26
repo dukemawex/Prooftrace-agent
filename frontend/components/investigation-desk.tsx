@@ -2,14 +2,18 @@
 
 import { AnimatePresence, MotionConfig, motion } from "framer-motion";
 import {
+  ArrowRight,
   ChevronRight,
   Cpu,
   Database,
+  FileCheck2,
   Fingerprint,
   FlaskConical,
   Play,
   RefreshCw,
+  ShieldAlert,
   ShieldCheck,
+  Sparkles,
   TriangleAlert,
   X,
 } from "lucide-react";
@@ -31,10 +35,15 @@ export default function InvestigationDesk() {
   const source = demo
     ? "Fictional replay fixtures"
     : desk.health?.zetaris.configured
-      ? "Zetaris configured"
+      ? "Zetaris federated SQL"
       : desk.health?.zetaris.fallback_enabled
         ? `${desk.health.zetaris.fallback_database.toUpperCase()} fallback enabled`
         : "Data connection unavailable";
+  const watchlistRows = demo
+    ? "301 FIXTURE"
+    : desk.health?.seed.live_rows_stored
+      ? `${desk.health.seed.live_rows_stored} LIVE`
+      : "—";
   const runKey = `${desk.mode}-${desk.selected}-${desk.busy ? "running" : (desk.result?.run_id ?? "idle")}`;
 
   return (
@@ -46,44 +55,69 @@ export default function InvestigationDesk() {
         >
           Skip to investigation console
         </a>
-        <header className="border-b border-slate-800/80 bg-[#090d14]/85 backdrop-blur-xl">
-          <div className="mx-auto flex min-h-[76px] max-w-[1760px] flex-wrap items-center gap-x-7 gap-y-4 px-4 py-4 sm:px-6 2xl:px-8">
-            <div className="flex items-center gap-2.5">
-              <span className="relative flex h-9 w-9 items-center justify-center rounded-xl border border-cyan-700/50 bg-gradient-to-br from-cyan-400/10 to-cyan-950/20 shadow-[0_0_20px_-12px_#22d3ee]">
+        <header className="sticky top-0 z-30 border-b border-slate-800/80 bg-[#060a12]/85 backdrop-blur-2xl">
+          <div className="mx-auto flex min-h-[72px] max-w-[1760px] flex-wrap items-center gap-x-6 gap-y-3 px-4 py-3.5 sm:px-6 2xl:px-8">
+            <div className="flex items-center gap-3">
+              <span className="relative flex h-10 w-10 items-center justify-center rounded-xl border border-cyan-400/35 bg-gradient-to-br from-cyan-400/20 via-cyan-900/25 to-slate-950 shadow-[0_0_26px_-8px_rgba(34,211,238,0.55)]">
                 <Fingerprint
                   size={22}
-                  strokeWidth={1.5}
+                  strokeWidth={1.6}
                   className="text-cyan-300"
                 />
               </span>
-              <span className="text-[19px] font-semibold tracking-[-0.045em] text-slate-100">
-                Teger <span className="text-cyan-300">Trace</span> Agent
-              </span>
+              <div>
+                <div className="flex items-center gap-2">
+                  <span className="text-[18px] font-semibold tracking-[-0.04em] text-slate-100">
+                    Teger <span className="text-cyan-300">Trace</span> Agent
+                  </span>
+                  <span className="hidden rounded border border-cyan-500/25 bg-cyan-950/50 px-1.5 py-0.5 font-mono text-[8px] font-semibold uppercase tracking-widest text-cyan-300 sm:inline-block">
+                    TRACK 02 · EXPLAINABLE AI
+                  </span>
+                </div>
+                <p className="hidden font-mono text-[9px] tracking-wide text-slate-500 sm:block">
+                  FORENSIC WIRE SCREENING · CITED SAR SYNTHESIS
+                </p>
+              </div>
             </div>
-            <div className="hidden h-5 w-px bg-slate-800 2xl:block" />
+            <div className="hidden h-5 w-px bg-slate-800/90 2xl:block" />
             <div className="order-3 flex w-full flex-wrap gap-2 xl:order-none xl:w-auto">
               <span
-                className="flex items-center gap-2 rounded-md border border-slate-800 bg-[#0d141f] px-2.5 py-1.5 text-[9px] text-slate-400"
+                className="flex items-center gap-2 rounded-lg border border-slate-800/90 bg-[#0b1220]/90 px-2.5 py-1.5 text-[9px] text-slate-400 shadow-sm"
                 title={
                   desk.health?.meterless.configured
                     ? "Meterless configured; connectivity is checked during a run"
-                    : "Primary provider; API credentials required for a live run"
+                    : "NVIDIA Nemotron routed via Meterless or OpenRouter fallback"
                 }
               >
                 <Cpu size={12} className="shrink-0 text-cyan-400" />
-                <span className="text-slate-200">NVIDIA Nemotron</span> ·
-                Meterless
+                <span className="font-medium text-slate-200">
+                  NVIDIA Nemotron
+                </span>
+                <span className="text-slate-600">·</span>
+                <span className="font-mono text-[8px] text-cyan-300/90">
+                  {desk.health?.model_runtime.preferred_provider === "openrouter"
+                    ? "OpenRouter 120B Free"
+                    : "Meterless"}
+                </span>
               </span>
               <span
-                className="flex items-center gap-2 rounded-md border border-slate-800 bg-[#0d141f] px-2.5 py-1.5 text-[9px] text-slate-400"
+                className="flex items-center gap-2 rounded-lg border border-slate-800/90 bg-[#0b1220]/90 px-2.5 py-1.5 text-[9px] text-slate-400 shadow-sm"
                 title={source}
               >
                 <Database size={11} className="shrink-0 text-violet-400" />
-                <span className="text-slate-200">Zetaris</span>
+                <span className="font-medium text-slate-200">Zetaris</span>
+                <span className="text-slate-600">·</span>
+                <span className="font-mono text-[8px] text-violet-300/90">
+                  {desk.health?.zetaris.configured
+                    ? "Federated SQL"
+                    : desk.health?.zetaris.fallback_enabled
+                      ? `${desk.health.zetaris.fallback_database.toUpperCase()} Silo`
+                      : "Standby"}
+                </span>
               </span>
             </div>
             <div className="ml-auto flex items-center gap-3">
-              <span className="hidden items-center gap-1.5 font-mono text-[9px] text-slate-500 2xl:flex">
+              <span className="hidden items-center gap-1.5 rounded-full border border-slate-800/80 bg-[#0a101c] px-2.5 py-1 font-mono text-[9px] text-slate-400 2xl:flex">
                 <StatusDot active={connected} />
                 {desk.loading
                   ? "CONNECTING"
@@ -92,7 +126,7 @@ export default function InvestigationDesk() {
                     : "API OFFLINE"}
               </span>
               <button
-                className="button-quiet !border-cyan-800/50 !bg-cyan-950/25 !text-cyan-200 hover:!bg-cyan-950/60"
+                className="button-quiet !border-cyan-500/35 !bg-cyan-950/35 !text-cyan-200 shadow-[0_0_20px_-10px_rgba(34,211,238,0.4)] hover:!border-cyan-400/60 hover:!bg-cyan-900/45"
                 disabled={desk.busy && !demo}
                 onClick={() => void desk.run(true)}
               >
@@ -105,55 +139,68 @@ export default function InvestigationDesk() {
             </div>
           </div>
         </header>
+
         <main
           id="investigation-console"
-          className="mx-auto max-w-[1760px] px-4 pb-6 pt-7 sm:px-6 2xl:px-8"
+          className="mx-auto max-w-[1760px] px-4 pb-8 pt-6 sm:px-6 2xl:px-8"
         >
-          <div className="mb-6 flex flex-wrap items-end justify-between gap-5">
+          <div className="mb-5 flex flex-wrap items-end justify-between gap-5">
             <div>
-              <div className="mb-3 flex items-center gap-2 font-mono text-[9px] tracking-wider text-slate-500">
-                <ShieldCheck size={11} />
-                <span>AML</span>
-                <ChevronRight size={10} />
-                <span className="text-slate-400">INVESTIGATIONS</span>
+              <div className="mb-2.5 flex items-center gap-2 font-mono text-[9px] tracking-wider text-slate-400">
+                <ShieldCheck size={12} className="text-cyan-400" />
+                <span>FINANCIAL CRIME COMPLIANCE</span>
+                <ChevronRight size={10} className="text-slate-600" />
+                <span className="text-cyan-300/90">
+                  EXPLAINABLE AML WORKBENCH
+                </span>
               </div>
-              <h1 className="text-[28px] font-medium leading-none tracking-[-0.055em] text-slate-100 sm:text-[32px]">
+              <h1 className="text-[26px] font-semibold leading-none tracking-[-0.045em] text-slate-50 sm:text-[32px]">
                 Wire investigations
               </h1>
-              <p className="mt-3 text-[11px] text-slate-500 sm:text-xs">
-                Review transfers, ownership records, and sanctions matches.
+              <p className="mt-2.5 text-[11px] text-slate-400 sm:text-xs">
+                Multi-stage NVIDIA Nemotron guard, multi-hop beneficial
+                ownership resolution, and row-cited SAR verification.
               </p>
             </div>
-            <div className="flex items-center gap-5 sm:gap-7">
-              <div>
+
+            <div className="grid w-full grid-cols-2 gap-2.5 sm:w-auto sm:grid-cols-4 sm:gap-3">
+              <div className="kpi-card">
                 <p className="eyebrow">Flagged wires</p>
-                <p className="mt-2 font-mono text-xl font-light text-slate-200">
+                <p className="mt-1.5 flex items-baseline gap-2 font-mono text-lg font-medium text-slate-100 sm:text-xl">
                   {desk.loading
                     ? "—"
                     : String(desk.alerts.length).padStart(2, "0")}
-                  <span className="ml-2 text-[9px] text-amber-400">
+                  <span className="rounded bg-amber-500/15 px-1.5 py-0.5 text-[8px] font-semibold tracking-wider text-amber-300">
                     IN QUEUE
                   </span>
                 </p>
               </div>
-              <div className="h-9 w-px bg-slate-800" />
-              <div>
+              <div className="kpi-card">
                 <p className="eyebrow">Review volume</p>
-                <p className="mt-2 font-mono text-xl font-light tracking-tight text-slate-200">
+                <p className="mt-1.5 font-mono text-lg font-medium tracking-tight text-slate-100 sm:text-xl">
                   {desk.loading ? "—" : money(volume)}
                 </p>
               </div>
-              <div className="hidden h-9 w-px bg-slate-800 sm:block" />
-              <div className="hidden sm:block">
+              <div className="kpi-card">
                 <p className="eyebrow">
                   {demo ? "Replays complete" : "Session verdicts"}
                 </p>
-                <p className="mt-2 font-mono text-xl font-light text-cyan-300">
+                <p className="mt-1.5 flex items-baseline gap-2 font-mono text-lg font-medium text-cyan-300 sm:text-xl">
                   {String(complete).padStart(2, "0")}
+                  <span className="text-[9px] font-normal text-slate-500">
+                    / {desk.alerts.length || 3}
+                  </span>
+                </p>
+              </div>
+              <div className="kpi-card">
+                <p className="eyebrow">OpenSanctions</p>
+                <p className="mt-1.5 flex items-baseline gap-1.5 font-mono text-sm font-medium text-violet-300 sm:text-base">
+                  {watchlistRows}
                 </p>
               </div>
             </div>
           </div>
+
           <AnimatePresence>
             {demo && (
               <motion.div
@@ -162,19 +209,19 @@ export default function InvestigationDesk() {
                 exit={{ opacity: 0, height: 0 }}
                 className="overflow-hidden"
               >
-                <div className="mb-5 flex flex-wrap items-center gap-x-3 gap-y-2 rounded-xl border border-violet-800/40 bg-violet-950/20 px-4 py-3">
+                <div className="mb-4 flex flex-wrap items-center gap-x-3 gap-y-2 rounded-xl border border-violet-500/35 bg-gradient-to-r from-violet-950/40 via-[#0d1024] to-[#0a0f1c] px-4 py-2.5 shadow-lg">
                   <FlaskConical
                     size={15}
                     className="shrink-0 text-violet-300"
                   />
-                  <span className="font-mono text-[10px] font-medium tracking-wider text-violet-300">
+                  <span className="font-mono text-[10px] font-semibold tracking-wider text-violet-200">
                     SIMULATED DEMO
                   </span>
-                  <span className="text-[10px] text-slate-400">
+                  <span className="text-[10px] text-slate-300">
                     Fictional fixtures · No model calls · Live memory unchanged
                   </span>
                   <button
-                    className="ml-auto flex min-h-7 items-center gap-1.5 rounded px-2 text-[10px] text-violet-200 hover:bg-violet-400/10"
+                    className="ml-auto flex min-h-7 items-center gap-1.5 rounded-md border border-violet-500/30 bg-violet-950/40 px-2.5 text-[10px] font-medium text-violet-200 transition-colors hover:bg-violet-900/50"
                     onClick={desk.exitDemo}
                   >
                     Exit replay
@@ -184,15 +231,16 @@ export default function InvestigationDesk() {
               </motion.div>
             )}
           </AnimatePresence>
+
           {!demo && desk.connectionError && (
             <div
               role="alert"
-              className="mb-5 flex flex-wrap items-center gap-3 rounded-xl border border-amber-900/50 bg-amber-950/20 p-3 text-xs text-amber-200"
+              className="mb-4 flex flex-wrap items-center gap-3 rounded-xl border border-amber-700/50 bg-amber-950/25 p-3 text-xs text-amber-200"
             >
-              <TriangleAlert size={15} className="shrink-0" />
+              <TriangleAlert size={15} className="shrink-0 text-amber-400" />
               <span className="min-w-0 flex-1">{desk.connectionError}</span>
               <button
-                className="button-quiet !text-amber-200"
+                className="button-quiet !border-amber-700/60 !text-amber-200"
                 onClick={() => void desk.refresh()}
               >
                 <RefreshCw size={12} />
@@ -200,30 +248,63 @@ export default function InvestigationDesk() {
               </button>
             </div>
           )}
+
           {desk.error && (
             <div
               role="alert"
-              className="mb-5 flex items-start gap-2.5 rounded-xl border border-amber-900/50 bg-amber-950/20 p-3 text-xs leading-relaxed text-amber-200"
+              className="mb-4 flex items-start gap-2.5 rounded-xl border border-amber-700/50 bg-amber-950/25 p-3 text-xs leading-relaxed text-amber-200"
             >
-              <TriangleAlert size={15} className="mt-0.5 shrink-0" />
+              <TriangleAlert size={15} className="mt-0.5 shrink-0 text-amber-400" />
               {desk.error}
             </div>
           )}
-          <div className="mb-3 flex flex-wrap items-center justify-between gap-2 px-1">
-            <div className="flex items-center gap-2 font-mono text-[9px] text-slate-500">
-              <span className="h-1 w-1 rounded-full bg-slate-500" />
-              <span>ACTIVE CASE</span>
-              <span className="text-slate-300">
-                {desk.active?.record_id ?? "—"}
-              </span>
-              <span className="mx-1 text-slate-700">/</span>
-              <span>{demo ? "REPLAY SESSION" : "INVESTIGATION"}</span>
+
+          {desk.active && (
+            <div className="mb-4 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-slate-800/85 bg-[#09101c]/90 px-4 py-2.5">
+              <div className="flex min-w-0 flex-wrap items-center gap-x-3 gap-y-1.5 text-xs">
+                <span className="flex items-center gap-1.5 font-mono text-[10px] font-semibold text-cyan-300">
+                  <Sparkles size={11} />
+                  {desk.active.record_id}
+                </span>
+                <span className="text-slate-700">·</span>
+                <span className="flex items-center gap-1.5 font-medium text-slate-200">
+                  <span className="truncate">{desk.active.sender_name}</span>
+                  <span className="rounded bg-slate-800 px-1 py-0.5 font-mono text-[9px] text-slate-400">
+                    {desk.active.sender_country}
+                  </span>
+                  <ArrowRight size={11} className="shrink-0 text-cyan-400" />
+                  <span className="truncate text-white">
+                    {desk.active.beneficiary_name}
+                  </span>
+                  <span className="rounded bg-slate-800 px-1 py-0.5 font-mono text-[9px] text-slate-400">
+                    {desk.active.beneficiary_country}
+                  </span>
+                </span>
+                <span className="hidden text-slate-700 lg:inline">·</span>
+                <span className="hidden text-[11px] text-slate-400 lg:inline">
+                  {desk.active.alert_reason}
+                </span>
+              </div>
+              <div className="flex flex-wrap items-center gap-2 font-mono text-[9px]">
+                {desk.active.invoice_verified ? (
+                  <span className="flex items-center gap-1 rounded border border-cyan-800/60 bg-cyan-950/40 px-2 py-0.5 text-cyan-300">
+                    <FileCheck2 size={10} />
+                    {desk.active.invoice_id || "Verified invoice"}
+                  </span>
+                ) : (
+                  <span className="flex items-center gap-1 rounded border border-amber-800/50 bg-amber-950/30 px-2 py-0.5 text-amber-300">
+                    <ShieldAlert size={10} />
+                    Unverified invoice
+                  </span>
+                )}
+                <span className="flex items-center gap-1.5 rounded border border-slate-800 bg-slate-900/80 px-2 py-0.5 text-slate-400">
+                  <Database size={10} className="text-violet-400" />
+                  {source}
+                </span>
+              </div>
             </div>
-            <span className="flex items-center gap-1.5 font-mono text-[8px] text-slate-500">
-              <Database size={10} />
-              {source}
-            </span>
-          </div>
+          )}
+
           <nav
             aria-label="Console sections"
             className="mb-4 grid grid-cols-3 gap-2 xl:hidden"
@@ -238,8 +319,9 @@ export default function InvestigationDesk() {
               Evidence dossier
             </a>
           </nav>
+
           <div
-            className={`grid items-stretch gap-4 md:grid-cols-[minmax(230px,.75fr)_minmax(0,1.25fr)] xl:min-h-[800px] xl:grid-cols-[minmax(0,.85fr)_minmax(0,1.4fr)_minmax(0,1.1fr)] ${demo ? "xl:h-[calc(100svh-365px)]" : "xl:h-[calc(100svh-290px)]"}`}
+            className={`grid items-stretch gap-4 md:grid-cols-[minmax(230px,.78fr)_minmax(0,1.22fr)] xl:min-h-[780px] xl:grid-cols-[minmax(0,.85fr)_minmax(0,1.35fr)_minmax(0,1.15fr)] ${demo ? "xl:h-[calc(100svh-380px)]" : "xl:h-[calc(100svh-320px)]"}`}
           >
             <WireQueue
               alerts={desk.alerts}
@@ -277,15 +359,20 @@ export default function InvestigationDesk() {
               />
             </div>
           </div>
-          <footer className="mt-5 flex flex-wrap items-center justify-between gap-x-5 gap-y-2 px-1 text-[9px] text-slate-600">
+
+          <footer className="mt-5 flex flex-wrap items-center justify-between gap-x-5 gap-y-2 px-1 text-[10px] text-slate-500">
             <p className="flex items-center gap-1.5">
-              <ShieldCheck size={11} />
+              <ShieldCheck size={12} className="text-cyan-400/80" />
               <span>
-                Teger Trace Agent<span className="mx-2 text-slate-700">/</span>
-                GenAI.works Open Agent Hackathon 2026
+                Teger Trace Agent
+                <span className="mx-2 text-slate-700">/</span>
+                GenAI.works Open Agent Hackathon 2026 · Track 02: The Agent That
+                Can Explain Why
               </span>
             </p>
-            <p className="font-mono text-[8px] tracking-wider">TRACK 02</p>
+            <p className="font-mono text-[9px] tracking-wider text-slate-500">
+              SHA-256 AUDITED · ZERO UNVERIFIED CLAIMS
+            </p>
           </footer>
           <div className="sr-only" role="status" aria-live="polite">
             {desk.busy

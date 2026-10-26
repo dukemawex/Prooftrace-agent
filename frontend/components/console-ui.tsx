@@ -13,7 +13,9 @@ export function PanelHeading({
   return (
     <div className="panel-heading">
       <div className="flex min-w-0 items-center gap-2.5">
-        <span className="shrink-0 text-slate-500">{icon}</span>
+        <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-md border border-cyan-500/20 bg-cyan-950/40 text-cyan-300">
+          {icon}
+        </span>
         <h2 className="panel-title">{title}</h2>
       </div>
       {aside}
