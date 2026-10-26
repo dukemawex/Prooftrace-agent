@@ -4,6 +4,8 @@ Teger Trace Agent investigates flagged wire transfers using **NVIDIA Nemotron** 
 
 Built for **GenAI.works Open Agent Hackathon 2026 · Track 02: The Agent That Can Explain Why**.
 
+**Live Workspace & Demo Replay:** [https://prooftrace-agent.vercel.app](https://prooftrace-agent.vercel.app) | **License:** [MIT](LICENSE)
+
 ![Teger Trace Agent showing a simulated investigation](docs/forensic-console.png)
 
 ## Run locally
