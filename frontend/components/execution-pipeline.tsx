@@ -34,6 +34,7 @@ const STAGES = [
     size: "NANO · 8B",
     icon: ShieldCheck,
     model: "nvidia/llama-3.1-nemotron-nano-8b-v1",
+    openrouterModel: "nvidia/nemotron-3.5-lightning:free",
     description: "Check the payment memo for injected instructions.",
   },
   {
@@ -43,6 +44,7 @@ const STAGES = [
     size: "SUPER · 49B",
     icon: GitBranch,
     model: "nvidia/llama-3.3-nemotron-super-49b-v1",
+    openrouterModel: "nvidia/nemotron-3-super-120b-a12b:free",
     description: "Query ownership records and screen the recorded owners.",
   },
   {
@@ -52,6 +54,7 @@ const STAGES = [
     size: "NEMOTRON · 70B",
     icon: Fingerprint,
     model: "nvidia/llama-3.1-nemotron-70b-instruct",
+    openrouterModel: "nvidia/nemotron-3-ultra-550b-a55b:free",
     description:
       "Draft the report and check its claims against the retrieved records.",
   },
@@ -215,8 +218,7 @@ function StageNode({
   const fallback =
     route?.provider === "openrouter" || (!route && fallbackConfigured);
   const model =
-    route?.model ??
-    (fallback ? "nvidia/nemotron-3-super-120b-a12b:free" : stage.model);
+    route?.model ?? (fallback ? stage.openrouterModel : stage.model);
   const guard = latestStage?.result;
   const Icon = stage.icon;
   return (

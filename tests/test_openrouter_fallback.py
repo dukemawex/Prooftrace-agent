@@ -7,7 +7,7 @@ from fastapi.testclient import TestClient
 from openai import AsyncOpenAI
 
 from backend.agent import GUARD_PROMPT, PLANNER_PROMPT
-from backend.config import MODELS, OPENROUTER_MODEL
+from backend.config import MODELS, OPENROUTER_MODEL, OPENROUTER_MODELS
 from backend.main import create_app
 from backend.services.nemotron import ModelUnavailable, Nemotron
 from tests.conftest import ScriptedNemotron
@@ -53,7 +53,7 @@ async def test_primary_failure_uses_only_free_nvidia_and_pins_stage(settings, mo
     assert len(requests) == 3
     assert requests[0][1]["model"] == MODELS["planner"]
     for request, body in requests[1:]:
-        assert body["model"] == OPENROUTER_MODEL
+        assert body["model"] == OPENROUTER_MODELS["planner"]
         assert body["provider"] == {"require_parameters": True, "max_price": {"prompt": 0, "completion": 0}}
         assert body["reasoning"] == {"enabled": False}
         assert "models" not in body
@@ -126,7 +126,7 @@ async def test_openrouter_only_exhaustion_fails_without_paid_fallback(settings, 
             await model.complete("guard", [{"role": "user", "content": "test"}])
     finally:
         await model.close()
-    assert [request["model"] for request in requests] == [OPENROUTER_MODEL]
+    assert [request["model"] for request in requests] == list(OPENROUTER_MODELS.values())
 
 
 @pytest.mark.parametrize("with_primary", [True, False])
@@ -140,7 +140,7 @@ def test_full_sse_pipeline_and_health_report_actual_fallback_routes(settings, da
         prompt = body["messages"][0]["content"]
         stage = "guard" if prompt == GUARD_PROMPT else "planner" if prompt == PLANNER_PROMPT else "synthesizer"
         reply = await scripted.complete(stage, body["messages"], body.get("tools"))
-        payload = completion(OPENROUTER_MODEL)
+        payload = completion(body["model"])
         payload["choices"][0]["message"] = reply.model_dump(exclude_none=True)
         payload["choices"][0]["finish_reason"] = "tool_calls" if reply.tool_calls else "stop"
         return httpx.Response(200, json=payload)
@@ -149,13 +149,14 @@ def test_full_sse_pipeline_and_health_report_actual_fallback_routes(settings, da
         health = client.get("/api/health").json()
         assert health["status"] == "ready"
         assert health["openrouter"]["configured"]
+        assert health["openrouter"]["models"] == dict(OPENROUTER_MODELS)
         assert health["model_runtime"]["configured"]
         response = client.post("/api/investigate/TXN-9003?stream=true")
         events = [json.loads(line[6:]) for line in response.text.splitlines() if line.startswith("data: ")]
         assert events[-1]["type"] == "result"
         result = events[-1]["result"]
         assert result["verdict"] == "ESCALATED" and result["guard"]["injection_detected"]
-        assert set(result["models"].values()) == {OPENROUTER_MODEL}
+        assert result["models"] == dict(OPENROUTER_MODELS)
         successes = [event for event in result["model_routes"] if event["status"] == "completed"]
         assert {event["stage"] for event in successes} == set(MODELS)
         assert all(event["provider"] == "openrouter" and event["fallback"] for event in successes)

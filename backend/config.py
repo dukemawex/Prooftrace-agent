@@ -14,7 +14,12 @@ MODELS = MappingProxyType({
     "planner": "nvidia/llama-3.3-nemotron-super-49b-v1",
     "synthesizer": "nvidia/llama-3.1-nemotron-70b-instruct",
 })
-OPENROUTER_MODEL = "nvidia/nemotron-3-super-120b-a12b:free"
+OPENROUTER_MODELS = MappingProxyType({
+    "guard": "nvidia/nemotron-3.5-lightning:free",
+    "planner": "nvidia/nemotron-3-super-120b-a12b:free",
+    "synthesizer": "nvidia/nemotron-3-ultra-550b-a55b:free",
+})
+OPENROUTER_MODEL = OPENROUTER_MODELS["planner"]
 OPENROUTER_BASE_URL = "https://openrouter.ai/api/v1"
 
 

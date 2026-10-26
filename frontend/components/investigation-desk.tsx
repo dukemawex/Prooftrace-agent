@@ -96,7 +96,7 @@ export default function InvestigationDesk() {
                 <span className="text-slate-600">·</span>
                 <span className="font-mono text-[8px] text-cyan-300/90">
                   {desk.health?.model_runtime.preferred_provider === "openrouter"
-                    ? "OpenRouter 120B Free"
+                    ? "OpenRouter · 3 Free Models"
                     : "Meterless"}
                 </span>
               </span>

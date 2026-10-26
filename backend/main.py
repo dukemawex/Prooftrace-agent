@@ -9,7 +9,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse, StreamingResponse
 
 from backend.agent import InvestigationAgent
-from backend.config import MODELS, OPENROUTER_MODEL, Settings
+from backend.config import MODELS, OPENROUTER_MODEL, OPENROUTER_MODELS, Settings
 from backend.services.database import Database
 from backend.services.nemotron import ModelUnavailable
 from backend.services.zetaris import DataUnavailable
@@ -47,7 +47,12 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         return {
             "status": "ready" if ready else "setup_required", "models": dict(MODELS),
             "meterless": {"configured": bool(config.meterless_api_key), "connectivity": "not_probed"},
-            "openrouter": {"configured": bool(config.openrouter_api_key), "connectivity": "not_probed", "model": OPENROUTER_MODEL},
+            "openrouter": {
+                "configured": bool(config.openrouter_api_key),
+                "connectivity": "not_probed",
+                "model": OPENROUTER_MODEL,
+                "models": dict(OPENROUTER_MODELS),
+            },
             "model_runtime": {"configured": config.models_configured,
                               "preferred_provider": "meterless" if config.meterless_api_key else "openrouter" if config.openrouter_api_key else None},
             "zetaris": {"configured": cloud_configured, "connectivity": "not_probed",

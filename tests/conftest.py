@@ -6,7 +6,7 @@ import pytest
 from openai.types.chat import ChatCompletionMessage, ChatCompletionMessageFunctionToolCall
 from openai.types.chat.chat_completion_message_function_tool_call import Function
 
-from backend.config import MODELS, OPENROUTER_MODEL, Settings
+from backend.config import MODELS, OPENROUTER_MODELS, Settings
 from backend.services.database import Database
 from scripts.seed_open_data import seed
 
@@ -45,7 +45,7 @@ class ScriptedNemotron:
 
     def route_for(self, stage):
         fallback = not self.settings.meterless_api_key
-        return {"model": OPENROUTER_MODEL if fallback else MODELS[stage],
+        return {"model": OPENROUTER_MODELS[stage] if fallback else MODELS[stage],
                 "provider": "openrouter" if fallback else "meterless", "fallback": fallback,
                 "fallback_reason": "Meterless/NIM key is not configured" if fallback else None}
 

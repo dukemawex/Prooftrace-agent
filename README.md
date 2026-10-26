@@ -57,7 +57,7 @@ All model requests use the OpenAI-compatible **client library**, with `METERLESS
 
 ### OpenRouter free fallback
 
-Set `OPENROUTER_API_KEY` in the backend environment to enable **`nvidia/nemotron-3-super-120b-a12b:free`** through `https://openrouter.ai/api/v1`. OpenRouter's [model catalog](https://openrouter.ai/nvidia/nemotron-3-super-120b-a12b:free) and public models API listed this free model with tool-calling support when checked on 2026-10-22.
+Set `OPENROUTER_API_KEY` in the backend environment to route the three stages across three free NVIDIA Nemotron models (`nvidia/nemotron-3.5-lightning:free`, `nvidia/nemotron-3-super-120b-a12b:free`, and `nvidia/nemotron-3-ultra-550b-a55b:free`) through `https://openrouter.ai/api/v1`. If any stage's assigned free endpoint is temporarily offline or rate-limited, it automatically cascades to the remaining active free NVIDIA Nemotron models before failing.
 
 Meterless/NIM remains the primary route when its key is present. Connection failures, timeouts, unavailable models, authentication/credit failures, rate limits, and server errors switch that stage to the fixed free OpenRouter model for the rest of the investigation. An OpenRouter-only configuration uses it for all three stages, including the separate verification pass. Malformed requests, refused/truncated outputs, and failed evidence validation do not trigger provider switching. If the free endpoint is unavailable or rate-limited, the investigation fails explicitly without choosing a paid or non-NVIDIA model.
 

@@ -1,11 +1,11 @@
-"""Fixed NVIDIA model routes with an opt-in, free OpenRouter fallback."""
+"""Fixed NVIDIA model routes with 3 stage-specific free OpenRouter NVIDIA models."""
 import json
 import re
 from collections.abc import Awaitable, Callable
 
 from openai import APIConnectionError, APIStatusError, AsyncOpenAI, OpenAIError
 
-from backend.config import MODELS, OPENROUTER_BASE_URL, OPENROUTER_MODEL, Settings
+from backend.config import MODELS, OPENROUTER_BASE_URL, OPENROUTER_MODELS, Settings
 
 
 class ModelUnavailable(RuntimeError):
@@ -34,6 +34,7 @@ class Nemotron:
                                            timeout=settings.model_timeout, max_retries=0)
                                 if settings.openrouter_api_key else None)
         self.fallback_stages: dict[str, str] = {}
+        self.openrouter_stage_models: dict[str, str] = dict(OPENROUTER_MODELS)
         self.on_route: Callable[[dict], Awaitable[None]] | None = None
 
     def route_for(self, stage: str) -> dict:
@@ -41,7 +42,7 @@ class Nemotron:
             raise ValueError("Unknown NVIDIA Nemotron routing stage")
         fallback = self.client is None or stage in self.fallback_stages
         return {
-            "model": OPENROUTER_MODEL if fallback else MODELS[stage],
+            "model": self.openrouter_stage_models[stage] if fallback else MODELS[stage],
             "provider": "openrouter" if fallback else "meterless",
             "fallback": fallback,
             "fallback_reason": self.fallback_stages.get(stage, "Meterless/NIM key is not configured" if fallback else None),
@@ -58,14 +59,18 @@ class Nemotron:
 
     async def complete(self, stage: str, messages: list[dict], tools: list[dict] | None = None):
         route = self.route_for(stage)
-        for _ in range(2):
+        # Allow primary -> OpenRouter switch, plus cascading across the 3 free NVIDIA models if one free endpoint is down/rate-limited.
+        candidates = [route["model"]] + [m for m in OPENROUTER_MODELS.values() if m != self.openrouter_stage_models[stage]]
+        attempted_openrouter: set[str] = set()
+        for _ in range(len(candidates) + 1):
             client = self.fallback_client if route["fallback"] else self.client
             options = {"model": route["model"], "messages": messages, "temperature": 0,
                        "max_tokens": 3500 if stage == "synthesizer" else 1800}
             if tools:
                 options.update(tools=tools, tool_choice="auto")
             if route["fallback"]:
-                # No generic free router or model substitution; this exact NVIDIA ID only.
+                attempted_openrouter.add(route["model"])
+                # Strictly free NVIDIA models only.
                 options["extra_body"] = {
                     "provider": {"require_parameters": True, "max_price": {"prompt": 0, "completion": 0}},
                     "reasoning": {"enabled": False},
@@ -81,6 +86,13 @@ class Nemotron:
                     self.fallback_stages[stage] = f"Meterless/NIM request failed: {failure}"
                     route = self.route_for(stage)
                     continue
+                if route["fallback"] and self._can_fallback(exc):
+                    next_free = next((m for m in OPENROUTER_MODELS.values() if m not in attempted_openrouter), None)
+                    if next_free:
+                        self.openrouter_stage_models[stage] = next_free
+                        self.fallback_stages[stage] = f"OpenRouter {route['model']} unavailable ({failure}); switched to {next_free}"
+                        route = self.route_for(stage)
+                        continue
                 raise ModelUnavailable(f"NVIDIA Nemotron request failed via {route['provider']}; check credentials, model access and rate limits") from None
             if not response.choices or response.choices[0].finish_reason not in ("stop", "tool_calls"):
                 await self._notify(stage, route, "failed", failure="Incomplete or refused model output")
