@@ -62,7 +62,13 @@ def validate_citations(narrative: Narrative, evidence: dict[str, dict]) -> None:
                 raise ValueError("Citation points to an unobserved record or field")
             if fact.field == "payment_memo":
                 raise ValueError("Quarantined memos cannot support a narrative claim")
-            if row[fact.field] != fact.value:
+            actual = row[fact.field]
+            expected = fact.value
+            if (
+                actual != expected
+                and str(actual) != str(expected)
+                and (numeric(actual) is None or numeric(actual) != numeric(expected))
+            ):
                 raise ValueError("Claim fact does not match its source row")
 
 

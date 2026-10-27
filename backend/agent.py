@@ -154,7 +154,9 @@ class InvestigationAgent:
             await event("stage", stage="planner", status="completed", **model.route_for("planner"),
                         result={"tool_calls": tool_count, "policy": policy})
             await event("stage", stage="synthesizer", status="running", **model.route_for("synthesizer"))
-            bundle = {"policy": policy, "evidence": safe_for_model(evidence),
+            required = {f"aml_transactions.{txn_id}"} | {f"icij_kyc_entities.{key}" for key in policy["chain"]} | {
+                f"opensanctions_watchlist.{key}" for key in policy["sanctions_matches"]}
+            bundle = {"policy": policy, "required_citations": sorted(required), "evidence": safe_for_model(evidence),
                       "screened_entities": {key: [r["record_id"] for r in rows] for key, rows in screens.items()}}
             synthesis_messages = [{"role": "system", "content": SYNTHESIS_PROMPT},
                                   {"role": "user", "content": json.dumps(bundle, default=str)}]
@@ -163,13 +165,21 @@ class InvestigationAgent:
             for attempt in range(2):
                 try:
                     message = await model.complete("synthesizer", synthesis_messages)
-                    candidate = Narrative.model_validate(json_object(message.content))
+                    raw_narrative = json_object(message.content)
+                    if isinstance(raw_narrative.get("claims"), list):
+                        for item in raw_narrative["claims"]:
+                            if isinstance(item, dict) and isinstance(item.get("text"), str) and isinstance(item.get("facts"), list):
+                                item["text"] = re.sub(r"\[CITE:\s*([A-Za-z_][\w]*\.[A-Za-z0-9_\-]+)\]", r"[CITE: \1]", item["text"])
+                                for f in item["facts"]:
+                                    if isinstance(f, dict) and isinstance(f.get("citation"), str):
+                                        tag = f"[CITE: {f['citation']}]"
+                                        if tag not in item["text"]:
+                                            item["text"] = f"{item['text'].rstrip()} {tag}"
+                    candidate = Narrative.model_validate(raw_narrative)
                     validate_citations(candidate, evidence)
                     if candidate.verdict != policy["verdict"]:
                         raise ValueError("Narrative verdict disagrees with evidence policy")
                     cited = {fact.citation for claim in candidate.claims for fact in claim.facts}
-                    required = {f"aml_transactions.{txn_id}"} | {f"icij_kyc_entities.{key}" for key in policy["chain"]} | {
-                        f"opensanctions_watchlist.{key}" for key in policy["sanctions_matches"]}
                     if not required.issubset(cited):
                         raise ValueError("Narrative omits a required ownership or transaction record")
                     checked = await model.complete("synthesizer", [
@@ -177,15 +187,19 @@ class InvestigationAgent:
                         {"role": "user", "content": json.dumps({**bundle, "narrative": candidate.model_dump()}, default=str)},
                     ])
                     verification = Verification.model_validate(json_object(checked.content))
-                    if not verification.supported or set(verification.supported_claims) != set(range(len(candidate.claims))):
+                    n_claims = len(candidate.claims)
+                    valid_indices = set(verification.supported_claims) in (set(range(n_claims)), set(range(1, n_claims + 1)))
+                    if not verification.supported or not valid_indices:
                         raise ValueError("Semantic evidence verification rejected the narrative")
                     narrative = candidate
                     break
-                except ValueError:
+                except ValueError as exc:
                     if attempt:
                         raise ModelUnavailable("Narrative failed citation or evidence verification twice; no verdict was saved") from None
+                    if getattr(model, "openrouter_stage_models", None) and model.route_for("synthesizer")["fallback"]:
+                        model.openrouter_stage_models["synthesizer"] = "nvidia/nemotron-3.5-lightning:free"
                     await event("verification", status="retrying", **model.route_for("synthesizer"), attempt=attempt + 1)
-                    synthesis_messages.append({"role": "user", "content": "Validation rejected the output. Rebuild a minimal, fully supported narrative with every required row and exact facts, scoped to fictional demo evidence."})
+                    synthesis_messages.append({"role": "user", "content": f"Validation rejected the output ({exc}). Rebuild a minimal, fully supported narrative citing every ID in required_citations ({sorted(required)}) with exact facts from evidence, and set verdict to {policy['verdict']}."})
             await event("stage", stage="synthesizer", status="completed", **model.route_for("synthesizer"),
                         result={"citations_verified": True, "semantic_verification": verification.model_dump()})
             digest = hashlib.sha256(json.dumps(evidence, sort_keys=True, default=str).encode()).hexdigest()

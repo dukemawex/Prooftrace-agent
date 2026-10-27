@@ -16,8 +16,15 @@ def json_object(content: str | None) -> dict:
     if not content:
         raise ValueError("Model returned no JSON")
     text = re.sub(r"<think>.*?</think>", "", content, flags=re.S).strip()
-    text = re.sub(r"^```(?:json)?\s*|\s*```$", "", text)
-    result = json.loads(text)
+    text = re.sub(r"<think>.*$", "", text, flags=re.S).strip()
+    text = re.sub(r"^```(?:json)?\s*|\s*```$", "", text).strip()
+    try:
+        result = json.loads(text)
+    except json.JSONDecodeError:
+        start, end = text.find("{"), text.rfind("}")
+        if start == -1 or end <= start:
+            raise
+        result = json.loads(text[start : end + 1])
     if not isinstance(result, dict):
         raise ValueError("Expected a JSON object")
     return result
