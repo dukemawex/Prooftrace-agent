@@ -3,6 +3,7 @@
 import { useRef, useState } from "react";
 import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
 import {
+  AlertOctagon,
   ArrowRight,
   Braces,
   Building2,
@@ -10,17 +11,14 @@ import {
   ChevronRight,
   CircleCheck,
   Download,
-  FileCheck2,
   Fingerprint,
   GitBranch,
   Link2,
   LockKeyhole,
-  ShieldAlert,
-  ShieldCheck,
   UserCheck,
 } from "lucide-react";
 import type { Investigation, Row, TraceEvent } from "@/lib/types";
-import { LoadingDots, PanelHeading } from "./console-ui";
+import { FingerprintMark, LoadingDots, PanelHeading } from "./console-ui";
 
 function CitationText({
   text,
@@ -70,13 +68,13 @@ function OwnershipChain({
   if (!chain.length) return null;
 
   return (
-    <div className="mt-3.5 rounded-xl border border-slate-800/90 bg-[#070c16]/90 p-3">
-      <div className="mb-2.5 flex items-center justify-between gap-2">
-        <span className="flex items-center gap-1.5 font-mono text-[9px] font-semibold uppercase tracking-wider text-slate-300">
-          <GitBranch size={11} className="text-cyan-400" />
-          Beneficial ownership & screening graph
+    <div className="mt-3.5 rounded-xl border border-slate-800/90 bg-[#080c15] p-3.5">
+      <div className="mb-2 flex items-center justify-between gap-2">
+        <span className="flex items-center gap-1.5 font-mono text-[10px] font-semibold uppercase tracking-wider text-slate-200">
+          <GitBranch size={12} className="text-cyan-300" />
+          Traced ownership path (click any node to inspect SQL row)
         </span>
-        <span className="font-mono text-[8px] text-slate-500">
+        <span className="font-mono text-[9px] text-slate-400">
           {chain.length} {chain.length === 1 ? "ENTITY" : "HOPS"}
         </span>
       </div>
@@ -103,28 +101,28 @@ function OwnershipChain({
                 type="button"
                 onClick={() => selectCitation(citationKey)}
                 aria-label={`Inspect ownership entity ${name}`}
-                className={`flex items-center gap-1.5 rounded-lg border px-2 py-1.5 text-left transition-all ${
+                className={`flex items-center gap-1.5 rounded-lg border px-2.5 py-1.5 text-left transition-all ${
                   isSelected
-                    ? "border-cyan-400/70 bg-cyan-950/60 text-white shadow-[0_0_16px_-6px_rgba(34,211,238,0.5)]"
-                    : "border-slate-700/80 bg-[#0b1322] text-slate-200 hover:border-cyan-500/50 hover:bg-slate-800/80"
+                    ? "border-cyan-400 bg-cyan-950/60 text-white"
+                    : "border-slate-700/80 bg-[#0d1320] text-slate-200 hover:border-cyan-500/50 hover:bg-slate-800/80"
                 }`}
               >
                 {isPerson ? (
-                  <UserCheck size={11} className="shrink-0 text-violet-300" />
+                  <UserCheck size={11} className="shrink-0 text-cyan-300" />
                 ) : (
                   <Building2 size={11} className="shrink-0 text-cyan-300" />
                 )}
-                <span className="text-[10px] font-medium">{name}</span>
+                <span className="text-[11px] font-medium">{name}</span>
                 {jurisdiction && (
-                  <span className="rounded bg-slate-800 px-1 py-0.5 font-mono text-[8px] text-slate-400">
+                  <span className="rounded bg-slate-800 px-1 py-0.5 font-mono text-[9px] text-slate-300">
                     {jurisdiction}
                   </span>
                 )}
               </button>
               {index < chain.length - 1 && (
-                <span className="flex items-center gap-1 font-mono text-[8px] text-cyan-400/90">
+                <span className="flex items-center gap-1 font-mono text-[9px] text-cyan-300">
                   {pct && (
-                    <span className="rounded border border-cyan-800/60 bg-cyan-950/40 px-1 py-0.5">
+                    <span className="rounded border border-cyan-800/60 bg-cyan-950/40 px-1.5 py-0.5">
                       {pct}
                     </span>
                   )}
@@ -145,15 +143,15 @@ function OwnershipChain({
                 type="button"
                 onClick={() => selectCitation(citationKey)}
                 aria-label={`Inspect sanctions match ${sanId}`}
-                className={`flex items-center gap-1.5 rounded-lg border px-2 py-1.5 text-left font-mono text-[9px] font-semibold transition-all ${
+                className={`flex items-center gap-1.5 rounded-lg border px-2.5 py-1.5 text-left font-mono text-[10px] font-semibold transition-all ${
                   isSelected
-                    ? "border-red-400 bg-red-950/80 text-white shadow-[0_0_16px_-6px_rgba(248,113,113,0.6)]"
+                    ? "border-red-400 bg-red-950/80 text-white"
                     : "border-red-500/45 bg-red-950/45 text-red-200 hover:border-red-400"
                 }`}
               >
-                <ShieldAlert size={11} className="shrink-0 text-red-400" />
+                <AlertOctagon size={11} className="shrink-0 text-red-400" />
                 <span>{String(row?.name ?? sanId)}</span>
-                <span className="rounded bg-red-500/20 px-1 py-0.5 text-[8px] text-red-300">
+                <span className="rounded bg-red-500/20 px-1 py-0.5 text-[8px] text-red-200">
                   WATCHLIST HIT
                 </span>
               </button>
@@ -168,8 +166,8 @@ function OwnershipChain({
 function RowInspector({ citation, row }: { citation: string; row: Row }) {
   const [json, setJson] = useState(false);
   return (
-    <div className="selected-evidence overflow-hidden rounded-xl border border-cyan-500/45 bg-gradient-to-b from-[#0a1824] to-[#071019] shadow-[0_0_32px_-12px_rgba(34,211,238,0.4)]">
-      <div className="flex items-center gap-2 border-b border-cyan-900/60 bg-[#08131d] px-3.5 py-2.5">
+    <div className="selected-evidence overflow-hidden rounded-xl border border-cyan-500/45 bg-[#08131d]">
+      <div className="flex items-center gap-2 border-b border-cyan-900/60 bg-[#060e16] px-3.5 py-2.5">
         <Braces size={13} className="shrink-0 text-cyan-300" />
         <span className="eyebrow !text-cyan-200">Source record</span>
         <button
@@ -184,11 +182,11 @@ function RowInspector({ citation, row }: { citation: string; row: Row }) {
         <p className="break-all font-mono text-[10px] font-medium leading-relaxed text-cyan-200">
           {citation}
         </p>
-        <div className="mt-1.5 flex items-center gap-1.5 text-[9px] text-slate-300">
-          <CheckCheck size={11} className="text-cyan-400" />
-          <span>Exact cited row</span>
+        <div className="mt-1.5 flex items-center gap-1.5 text-[10px] text-slate-300">
+          <CheckCheck size={11} className="text-cyan-300" />
+          <span>Exact cited row from database</span>
           {Boolean(row.is_demo) && (
-            <span className="ml-auto rounded bg-amber-500/15 px-1.5 py-0.5 font-mono text-[8px] text-amber-300">
+            <span className="ml-auto rounded bg-amber-500/15 px-1.5 py-0.5 font-mono text-[8px] text-amber-200">
               Fictional fixture
             </span>
           )}
@@ -206,7 +204,7 @@ function RowInspector({ citation, row }: { citation: string; row: Row }) {
           {Object.entries(row).map(([field, value]) => (
             <div
               key={field}
-              className="grid grid-cols-[minmax(0,.85fr)_minmax(0,1.15fr)] gap-3 border-b border-slate-800/80 py-2 font-mono text-[9px] last:border-0"
+              className="grid grid-cols-[minmax(0,.85fr)_minmax(0,1.15fr)] gap-3 border-b border-slate-800/80 py-2 font-mono text-[10px] last:border-0"
             >
               <dt className="break-words text-slate-400">{field}</dt>
               <dd className="break-words font-medium text-slate-100 [overflow-wrap:anywhere]">
@@ -250,24 +248,22 @@ function SafetyShield({
       : "Meterless / NVIDIA Nemotron";
   return (
     <section
-      className={`rounded-xl border p-3.5 transition-colors ${blocked ? "border-red-500/40 bg-gradient-to-br from-red-950/30 to-[#0a0f18]" : "border-slate-800/90 bg-[#080d17]/90"}`}
+      className={`rounded-xl border p-3.5 transition-colors ${blocked ? "border-red-500/40 bg-red-950/20" : "border-slate-800/90 bg-[#080c15]"}`}
       aria-label="Memo screening status"
     >
-      <div className="mb-2.5 flex items-center gap-2">
+      <div className="mb-2 flex items-center gap-2">
         <span
           className={`flex h-7 w-7 items-center justify-center rounded-lg border ${blocked ? "border-red-500/45 bg-red-950/50 text-red-300" : "border-cyan-500/35 bg-cyan-950/40 text-cyan-300"}`}
         >
-          {blocked ? <ShieldAlert size={14} /> : <ShieldCheck size={14} />}
+          {blocked ? <AlertOctagon size={14} /> : <LockKeyhole size={14} />}
         </span>
-        <h3 className="text-[11px] font-semibold text-slate-100">
-          Memo screening
-        </h3>
+        <h3 className="text-xs font-semibold text-slate-100">Memo screening</h3>
         <span
-          className={`ml-auto h-2 w-2 rounded-full ${waiting ? "bg-slate-600" : blocked ? "bg-red-400 shadow-[0_0_8px_#f87171]" : "bg-cyan-300 shadow-[0_0_8px_#67e8f9]"}`}
+          className={`ml-auto h-2 w-2 rounded-full ${waiting ? "bg-slate-600" : blocked ? "bg-red-400" : "bg-cyan-300"}`}
         />
       </div>
       <p
-        className={`text-[11px] font-semibold ${blocked ? "text-red-200" : waiting ? "text-slate-400" : "text-cyan-200"}`}
+        className={`text-xs font-semibold ${blocked ? "text-red-200" : waiting ? "text-slate-400" : "text-cyan-200"}`}
       >
         {waiting
           ? busy
@@ -277,15 +273,15 @@ function SafetyShield({
             ? "Injection detected. Memo quarantined."
             : "No injection detected. Memo quarantined."}
       </p>
-      <p className="mt-1.5 text-[10px] leading-relaxed text-slate-400">
+      <p className="mt-1.5 text-[11px] leading-relaxed text-slate-400">
         {waiting
           ? "The payment memo is checked before ownership and sanctions screening."
           : blocked
             ? "The memo was quarantined. Sanctions screening continued."
             : "The memo was excluded from subsequent model instructions."}
       </p>
-      <div className="mt-2.5 flex flex-wrap items-center gap-1.5 border-t border-slate-800/80 pt-2.5 font-mono text-[8px] text-slate-400">
-        <LockKeyhole size={10} className="text-cyan-400" />
+      <div className="mt-2.5 flex flex-wrap items-center gap-1.5 border-t border-slate-800/80 pt-2.5 font-mono text-[9px] text-slate-400">
+        <Fingerprint size={11} className="text-cyan-300" />
         {demo ? "SIMULATED AUDIT · NO MODEL CALLS" : provider}
         <span className="ml-auto rounded bg-slate-800/80 px-1.5 py-0.5 text-slate-300">
           {waiting ? "PENDING" : demo ? "REPLAY" : "AUDITED"}
@@ -297,30 +293,17 @@ function SafetyShield({
 
 function EmptyDossier({ busy, loading }: { busy: boolean; loading: boolean }) {
   return (
-    <div className="grid-texture relative flex min-h-[350px] flex-col items-center justify-center px-7 pb-8 pt-7 text-center">
-      <div className="relative mb-6 flex h-28 w-28 items-center justify-center">
-        <div className="absolute inset-0 rounded-full border border-slate-800/90" />
-        <div className="absolute inset-3 rounded-full border border-dashed border-cyan-500/30" />
-        <div className="absolute inset-6 rounded-full bg-cyan-400/10 blur-xl" />
-        <Fingerprint
-          size={36}
-          strokeWidth={1.2}
-          className="relative text-cyan-300/80"
-        />
-        {busy && (
-          <span className="scan-line absolute h-px w-20 bg-cyan-300/60 shadow-[0_0_12px_#22d3ee]" />
-        )}
-        <span className="absolute bottom-2 right-2 rounded-full border border-slate-700 bg-[#0e1622] p-1.5">
-          <LockKeyhole size={11} className="text-cyan-300" />
-        </span>
+    <div className="grid-texture relative flex min-h-[370px] flex-col items-center justify-center px-7 pb-8 pt-7 text-center">
+      <div className="relative mb-5 flex items-center justify-center">
+        <FingerprintMark size="lg" scanning={busy} />
       </div>
       <h3 className="text-sm font-semibold text-slate-100">
         {busy ? "Investigation in progress" : "No findings yet"}
       </h3>
-      <p className="mb-5 mt-2 max-w-[250px] text-[11px] leading-relaxed text-slate-400">
+      <p className="mb-5 mt-2 max-w-[280px] text-xs leading-relaxed text-slate-400">
         {busy
           ? "The report and its citations must pass verification before results appear."
-          : "Select a wire, then run an investigation."}
+          : "Click 'Run investigation' or 'Demo replay' to generate a verified verdict, ownership path, and row-cited SAR draft."}
       </p>
       {busy || loading ? (
         <div
@@ -390,12 +373,13 @@ export function EvidenceDossier({
       aria-label="Verdict and evidence dossier"
     >
       <PanelHeading
-        icon={<FileCheck2 size={14} />}
+        step="03"
         title="Findings and evidence"
+        subtitle="Explained verdict & cited SAR proof"
         aside={
           result ? (
             <button
-              className="flex items-center gap-1.5 rounded-lg border border-slate-700/80 bg-slate-900/80 px-2.5 py-1 font-mono text-[9px] text-slate-200 transition-colors hover:border-cyan-500/50 hover:bg-cyan-950/40 hover:text-cyan-200"
+              className="flex items-center gap-1.5 rounded-lg border border-slate-700/80 bg-slate-900 px-2.5 py-1 font-mono text-[9px] text-slate-200 transition-colors hover:border-cyan-500/50 hover:bg-cyan-950/40 hover:text-cyan-200"
               onClick={exportEvidence}
               aria-label="Export investigation evidence"
             >
@@ -403,7 +387,7 @@ export function EvidenceDossier({
               <span className="hidden sm:inline">EXPORT JSON</span>
             </button>
           ) : (
-            <LockKeyhole size={13} className="shrink-0 text-slate-600" />
+            <LockKeyhole size={13} className="shrink-0 text-slate-500" />
           )
         }
       />
@@ -417,7 +401,7 @@ export function EvidenceDossier({
             className="p-4"
           >
             <div
-              className={`relative overflow-hidden rounded-xl border p-4 shadow-lg ${cleared ? "border-cyan-500/45 bg-gradient-to-br from-cyan-950/60 via-[#091824] to-[#070d17]" : review ? "border-amber-500/45 bg-gradient-to-br from-amber-950/50 via-[#191309] to-[#070d17]" : "border-red-500/45 bg-gradient-to-br from-red-950/55 via-[#1c0c12] to-[#070d17]"}`}
+              className={`relative overflow-hidden rounded-xl border p-4 ${cleared ? "border-cyan-500/45 bg-cyan-950/25" : review ? "border-amber-500/45 bg-amber-950/25" : "border-red-500/45 bg-red-950/25"}`}
             >
               <div className="mb-2.5 flex items-center justify-between">
                 <span
@@ -426,11 +410,11 @@ export function EvidenceDossier({
                   {cleared ? (
                     <CircleCheck size={11} />
                   ) : (
-                    <ShieldAlert size={11} />
+                    <AlertOctagon size={11} />
                   )}
                   {result.verdict}
                 </span>
-                <span className="rounded bg-slate-900/70 px-2 py-0.5 font-mono text-[8px] font-semibold tracking-wider text-slate-300">
+                <span className="rounded bg-slate-900/80 px-2 py-0.5 font-mono text-[9px] font-semibold tracking-wider text-slate-300">
                   {demo ? "SIMULATED VERDICT" : "VERIFIED RESULT"}
                 </span>
               </div>
@@ -443,10 +427,13 @@ export function EvidenceDossier({
                     ? "Manual review required"
                     : "Escalate for review"}
               </h3>
-              <p className="mt-2 text-[11px] leading-relaxed text-slate-300">
+              <p className="mt-2 text-xs leading-relaxed text-slate-200">
+                <strong className="font-semibold text-white">
+                  Why this decision:
+                </strong>{" "}
                 {result.policy.reason}
               </p>
-              <div className="mt-3.5 flex flex-wrap gap-3 border-t border-slate-700/40 pt-3 font-mono text-[9px] text-slate-300">
+              <div className="mt-3.5 flex flex-wrap gap-3 border-t border-slate-700/50 pt-3 font-mono text-[10px] text-slate-300">
                 <span>
                   <span className="font-semibold text-white">
                     {result.claims.length}
@@ -462,7 +449,7 @@ export function EvidenceDossier({
                 {result.policy.cross_silo_checked && (
                   <span className="ml-auto flex items-center gap-1 text-cyan-300">
                     <CheckCheck size={11} />
-                    Cross-silo verified
+                    Cross-silo SQL verified
                   </span>
                 )}
               </div>
@@ -507,7 +494,7 @@ export function EvidenceDossier({
                       document.getElementById(`tab-${next}`)?.focus();
                     }
                   }}
-                  className={`relative flex-1 px-2 pb-3 font-mono text-[10px] font-semibold uppercase tracking-wider transition-colors ${tab === item ? "text-cyan-300" : "text-slate-500 hover:text-slate-300"}`}
+                  className={`relative flex-1 px-2 pb-3 font-mono text-[10px] font-semibold uppercase tracking-wider transition-colors ${tab === item ? "text-cyan-300" : "text-slate-400 hover:text-slate-200"}`}
                 >
                   {item === "narrative"
                     ? "SAR draft"
@@ -515,7 +502,7 @@ export function EvidenceDossier({
                   {tab === item && (
                     <motion.span
                       layoutId="dossier-tab"
-                      className="absolute inset-x-0 bottom-0 h-0.5 bg-gradient-to-r from-cyan-400 to-teal-300"
+                      className="absolute inset-x-0 bottom-0 h-0.5 bg-cyan-400"
                     />
                   )}
                 </button>
@@ -537,13 +524,13 @@ export function EvidenceDossier({
                     {result.claims.map((claim, index) => (
                       <div
                         key={index}
-                        className="rounded-xl border border-slate-800/80 bg-[#080e19]/80 p-3"
+                        className="rounded-xl border border-slate-800/85 bg-[#080c15] p-3"
                       >
                         <div className="flex gap-2.5">
-                          <span className="mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded bg-slate-800/90 font-mono text-[9px] font-semibold text-cyan-300">
+                          <span className="mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded bg-slate-800 font-mono text-[9px] font-semibold text-cyan-300">
                             {String(index + 1).padStart(2, "0")}
                           </span>
-                          <p className="min-w-0 text-[11px] leading-[1.85] text-slate-200">
+                          <p className="min-w-0 text-xs leading-[1.85] text-slate-200">
                             <CitationText
                               text={claim.text}
                               select={selectCitation}
@@ -556,15 +543,13 @@ export function EvidenceDossier({
                             {claim.facts.map((fact, fi) => (
                               <span
                                 key={fi}
-                                className="inline-flex items-center gap-1 rounded border border-slate-800 bg-[#050911] px-1.5 py-0.5 font-mono text-[8px] text-slate-400"
+                                className="inline-flex items-center gap-1 rounded border border-slate-800 bg-[#05080f] px-1.5 py-0.5 font-mono text-[9px] text-slate-400"
                               >
                                 <CheckCheck
                                   size={9}
-                                  className="text-cyan-400"
+                                  className="text-cyan-300"
                                 />
-                                <span className="text-slate-500">
-                                  {fact.field}:
-                                </span>
+                                <span>{fact.field}:</span>
                                 <span className="text-slate-200">
                                   {String(fact.value)}
                                 </span>
@@ -579,19 +564,19 @@ export function EvidenceDossier({
                   <div className="space-y-2">
                     {Object.entries(result.evidence).map(([id, row]) => (
                       <button
-                        className={`flex w-full items-center gap-2.5 rounded-xl border p-3 text-left transition-all ${activeCitation === id ? "border-cyan-500/60 bg-cyan-950/35 shadow-sm" : "border-slate-800 bg-[#09101c] hover:border-slate-600"}`}
+                        className={`flex w-full items-center gap-2.5 rounded-xl border p-3 text-left transition-all ${activeCitation === id ? "border-cyan-500/60 bg-cyan-950/35" : "border-slate-800 bg-[#080c15] hover:border-slate-600"}`}
                         key={id}
                         onClick={() => selectCitation(id)}
                         aria-pressed={activeCitation === id}
                       >
-                        <Braces size={13} className="shrink-0 text-cyan-400" />
+                        <Braces size={13} className="shrink-0 text-cyan-300" />
                         <span className="min-w-0">
-                          <span className="block text-[11px] font-medium text-slate-100">
+                          <span className="block text-xs font-medium text-slate-100">
                             {String(
                               row.entity_name ?? row.name ?? row.record_id,
                             )}
                           </span>
-                          <span className="mt-1 block break-all font-mono text-[8px] text-slate-400">
+                          <span className="mt-1 block break-all font-mono text-[9px] text-slate-400">
                             {id}
                           </span>
                         </span>
@@ -629,14 +614,14 @@ export function EvidenceDossier({
                   </div>
                 </motion.div>
               ) : (
-                <div className="mt-4 flex items-center gap-2 rounded-xl border border-dashed border-slate-700/80 bg-[#070c15]/50 px-3.5 py-3 text-[10px] text-slate-400">
-                  <Link2 size={13} className="shrink-0 text-cyan-400" />
-                  Click any citation or ownership node to inspect its raw source
-                  record.
+                <div className="mt-4 flex items-center gap-2 rounded-xl border border-dashed border-slate-700/80 bg-[#080c15] px-3.5 py-3 text-[11px] text-slate-400">
+                  <Link2 size={13} className="shrink-0 text-cyan-300" />
+                  Click any `[CITE: ...]` tag or ownership node above to inspect
+                  its raw database row.
                 </div>
               )}
             </AnimatePresence>
-            <div className="mt-4 flex items-center gap-1.5 text-[9px] font-medium text-cyan-300">
+            <div className="mt-4 flex items-center gap-1.5 text-[10px] font-medium text-cyan-300">
               <CheckCheck size={12} />
               {demo
                 ? "Demo citations checked"
@@ -644,7 +629,7 @@ export function EvidenceDossier({
                   ? "Citations checked against source records"
                   : "Citation verification unavailable"}
             </div>
-            <p className="mt-1.5 text-[9px] leading-relaxed text-slate-500">
+            <p className="mt-1.5 text-[10px] leading-relaxed text-slate-400">
               {result.scope}
             </p>
           </motion.div>
@@ -653,9 +638,9 @@ export function EvidenceDossier({
       <div className="mt-auto p-4 pt-3">
         <SafetyShield trace={trace} result={result} busy={busy} demo={demo} />
       </div>
-      <div className="flex items-center justify-between gap-2 border-t border-slate-800/80 bg-[#060a12]/80 px-4 py-3 font-mono text-[8px] text-slate-400">
+      <div className="flex items-center justify-between gap-2 border-t border-slate-800/85 bg-[#06090f] px-4 py-3 font-mono text-[9px] text-slate-400">
         <span className="flex items-center gap-1.5">
-          <Fingerprint size={11} className="text-cyan-400" />
+          <Fingerprint size={12} className="text-cyan-300" />
           {result
             ? `SHA-256 ${result.evidence_digest.slice(0, 12)}…`
             : "EVIDENCE INTEGRITY"}
