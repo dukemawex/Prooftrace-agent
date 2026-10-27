@@ -37,6 +37,30 @@ The live workspace loads seeded data without model credentials and shows the pro
 
 Use [the Render backend and Vercel frontend guide](docs/deployment.md) for hosting, environment variables, cloud seeding, and live verification. The root `render.yaml` defines the FastAPI service, health check, generated backend key, and required PostgreSQL connection. Configure model and Zetaris credentials in Render, then set the Render URL and shared key in Vercel.
 
+## Deploy to Vercel (quick path)
+
+Vercel hosts the Next.js UI; the FastAPI agent runs on Render (long SSE investigations, a per-process lock and a persistent Postgres don't fit stateless Vercel Python functions). The browser only talks to the same-origin Next.js proxy (`frontend/app/api/[...path]/route.ts`), so no CORS changes are needed.
+
+1. **Database:** create a Postgres database (Render, Neon or Supabase) and seed it: `DATABASE_URL=<external url> python scripts/seed_open_data.py --rows 300` (or the *Seed open data* GitHub Action).
+2. **Backend on Render:** New → Blueprint → this repo (`render.yaml`). Set `DATABASE_URL`, `OPENROUTER_API_KEY` and/or `METERLESS_API_KEY`, and either the Zetaris variables or `ALLOW_LOCAL_FALLBACK=true` (the Blueprint default `false` makes investigations fail without Zetaris). Copy the generated `PROOFTRACE_API_KEY`. Check `https://<service>.onrender.com/api/health`.
+3. **Frontend on Vercel:** Add New → Project → import the repo. Framework **Next.js**, **Root Directory `frontend`**, Node **22.x**; build settings come from `frontend/vercel.json`. Add env vars `BACKEND_URL=https://<service>.onrender.com` (no trailing slash, no `/api`) and `PROOFTRACE_API_KEY=<same value as Render>`. Deploy.
+   CLI alternative: `cd frontend && npx vercel link && npx vercel env add BACKEND_URL production && npx vercel env add PROOFTRACE_API_KEY production && npx vercel --prod`.
+
+| Where | Variable | Purpose |
+| --- | --- | --- |
+| Render | `DATABASE_URL` | Postgres for wires, evidence, results, episodic memory (required; SQLite is ephemeral there) |
+| Render | `OPENROUTER_API_KEY` | Free NVIDIA Nemotron models (enough on its own) |
+| Render | `METERLESS_API_KEY`, `METERLESS_BASE_URL` | Primary Nemotron route (Meterless or NVIDIA NIM) |
+| Render | `ZETARIS_API_URL`, `ZETARIS_API_KEY`, `ZETARIS_*_TABLE` | Federated SQL evidence queries |
+| Render | `ALLOW_LOCAL_FALLBACK` | `true` to use Postgres when Zetaris is absent |
+| Render | `MONGODB_URI` | Optional KYC silo |
+| Render + Vercel | `PROOFTRACE_API_KEY` | Shared secret the proxy sends to the backend |
+| Vercel | `BACKEND_URL` | Render origin the proxy forwards `/api/*` to |
+
+**Smoke test:** open the Vercel URL → `/api/health` shows `status: "ready"` and 3 alerts → wire queue loads → run `TXN-9002` and see streamed model calls, SQL rows and an `ESCALATED` cited verdict → `TXN-9003` shows the injection warning → reload and the result persists → **Demo replay** works. Wake the free Render instance (~1 min) before recording. Investigations must finish within 300 s (Vercel function limit on the proxy).
+
+Full details: [docs/deployment.md](docs/deployment.md).
+
 ## Interface and demo replay
 
 The interface has three panels: the wire queue, execution log, and findings. Expand a step to inspect its model route, SQL queries, and returned rows. Click a citation to open the source record. Results can be exported as JSON. The interface supports mobile layouts, keyboard navigation, reduced motion, cancellation, and connection retries.
